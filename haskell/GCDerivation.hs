@@ -168,3 +168,44 @@ expose_r als p = nub $ [obj_f als o f |
   is $ obj_f als o f]
 
 -- 5.2.2: Cross-wavefront counts
+
+m_plus, m_minus :: (WavefrontDimension, PolicyDimension) =>
+                   AL -> Object -> Log -> Int
+
+m_plus als o p = length $ [pi |
+  i <- [0 .. length p - 1],
+  let pi = p !! i
+      prepi = pre i p,
+  elem (kind pi) [M, A],
+  (deref als $ new pi) == Just o,
+  elem (source pi, field pi) $ wgt als prepi,
+  lr $ source pi]
+
+m_minus als o p = length $ [pi |
+  i <- [0 .. length p - 1],
+  let pi = p !! i
+      prepi = pre i p,
+  elem (kind pi) [M, A],
+  (deref als $ new pi) == Just o,
+  elem (source pi, field pi) $ wlt als prepi,
+  lr $ source pi]
+
+m :: (WavefrontDimension, PolicyDimension) =>
+     AL -> ObjectOrNull -> Log -> Int
+m als on p = case on of
+ Just o -> m_plus als o p - m_minus als o p
+ Nothing -> 0
+
+-- Collection by counting
+expose_c :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
+         AL -> [LogEntry] -> [ObjectOrNull]
+expose_c als p = nub $ [n |
+  i <- [0 .. length p - 1],
+  let pi = p !! i
+      n  = deref als $ new pi,
+  m als n p > 0, is n]
+
+
+expose_rc :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
+         AL -> [LogEntry] -> [ObjectOrNull]
+expose_rc als p = nub $ expose_r als p ++ expose_c als p
