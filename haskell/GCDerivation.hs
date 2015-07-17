@@ -209,3 +209,40 @@ expose_c als p = nub $ [n |
 expose_rc :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
          AL -> [LogEntry] -> [ObjectOrNull]
 expose_rc als p = nub $ expose_r als p ++ expose_c als p
+
+
+{-----------------------------------------------------}
+{-            5.3: The Threshold Dimensions          -}
+{-----------------------------------------------------}
+
+data I = Inf | Ind Int deriving (Eq, Ord, Show)
+
+-- This is relevant for the mutator, not the collector
+class ThresholdDimension where
+  dt :: I -> Object -> Bool
+  dt i = case i of Ind j -> dk j ; _ -> dinf
+
+  dinf :: Object -> Bool
+  dk   :: Int -> Object -> Bool
+
+{-----------------------------------------------------}
+{-        5.4: Protection Dimension (contd.)         -}
+{-----------------------------------------------------}
+
+expose_d :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
+         AL -> [LogEntry] -> [ObjectOrNull]
+expose_d als p = nub $ [o |
+  i <- [0 .. length p - 1],
+  let pi = p !! i
+      o  = deref als $ old pi
+      prepi = pre i p,
+  not $ elem (source pi, field pi) $ wlt als prepi,
+  ds o]
+
+-- Final version of the expos function
+
+expose_rcd :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
+              AL -> [LogEntry] -> [ObjectOrNull]
+expose_rcd als p = nub $ expose_rc als p ++ expose_d als p
+
+-- TODO: try examples
