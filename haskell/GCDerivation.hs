@@ -42,7 +42,7 @@ pre k = take k
 
 data ActionKind = T | M | A deriving (Eq, Ord, Show)
 data LogEntry = LE {
-  kind   :: ActionKind,
+  kind    :: ActionKind,
   source  :: Object,
   field   :: FName,
   old     :: Ref,
