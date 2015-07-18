@@ -29,11 +29,13 @@ type AL = [Object]
 
 -- Mapping fields to allocated values
 -- The parameter AL is always passed as list 
-h :: AL -> Object -> FName -> ObjectOrNull
-h als o fname = do
-  -- Find the object ID or Nothinr
+h :: AL -> ObjId -> FName -> ObjectOrNull
+h als oid fname = do
+  -- Find the object by id "oid"
+  o <- L.find (\ob -> objid ob == oid) als 
+  -- Find the object ID or Nothing for the field name "fname"
   fObjId <- join $ M.lookup fname $ fields o
-  -- Find the object
+  -- Find the object for the id "fObjId"
   L.find (\ob -> objid ob == fObjId) als
 
 -- An alias
@@ -43,7 +45,7 @@ pre k = take k
 data ActionKind = T | M | A deriving (Eq, Ord, Show)
 data LogEntry = LE {
   kind    :: ActionKind,
-  source  :: Object,
+  source  :: ObjId,
   field   :: FName,
   old     :: Ref,
   new     :: Ref
@@ -54,22 +56,27 @@ type Log = [LogEntry]
 fields' = toList . fields
 
 -- Definition of the wavefront
-wavefront :: Log -> [(Object, FName)]
+wavefront :: Log -> [(ObjId, FName)]
 wavefront p = [(source pi, field pi) | pi <- p, kind pi == T]
 
 -- Definition of behind/ahead
 behind p (o, f) = elem (o, f) $ wavefront p
 ahead p = not . (behind p)
 
--- The initial expose_apex function
--- for giving the reachable object
+-- util function for mapping a list of Maybe-objects to their IDs
+ids :: [ObjectOrNull] -> [ObjId]
+ids ons = [objid o | Just o <- ons]
 
 {-----------------------------------------------------------------}
 {--     The initial expose function of the apex algorithm       --}
 {-----------------------------------------------------------------}
 
-expose_apex :: AL -> [LogEntry] -> [ObjectOrNull]
-expose_apex als p = nub $ [obj_f als o f |
+-- The initial expose_apex function
+-- for giving the reachable object
+
+expose_apex :: AL -> [LogEntry] -> [ObjId]
+expose_apex als p = ids $ nub $ 
+ [obj_f als o f |
   i <- [0 .. length p - 1],
   let pi = p !! i
       o = source pi
@@ -84,21 +91,21 @@ expose_apex als p = nub $ [obj_f als o f |
 
 -- So far, we are representing partitions via boolean selector functions
 
-{------=-------------------------}
+{--------------------------------}
 {- 5.1: The Wavefront Dimension -}
-{-------=------------------------}
+{--------------------------------}
 
 class WavefrontDimension where
-  fl, ol :: Object -> Bool
-  fl = not . ol
-  ol = not . fl
+  fl, ol :: [Object] -> ObjId -> Bool
+  fl als = not . (ol als)
+  ol als = not . (fl als)
 
 -- All fields of all objects ever
 all_fields :: [Object] -> [FName]
 all_fields als = [fname | o <- als, fname <- keys $ fields o]
 
 {- two views to the wavefront -}
-wgt, wlt :: WavefrontDimension => [Object] -> Log -> [(Object, FName)]
+wgt, wlt :: WavefrontDimension => [Object] -> Log -> [(ObjId, FName)]
 
 {- 
 
@@ -108,10 +115,21 @@ wavefront, pairing them and returning the combinations.
 
 -}
 
+-- util function for getting all fields of an object by id
+obj_fields :: [Object] -> ObjId -> [FName]
+obj_fields als id = 
+ let tmp = do o <- L.find (\ob -> objid ob == id) als
+              return $ keys $ fields o
+ in case tmp of Just fs -> fs; _ -> []
+           
+
 wgt als p =
   let wf = wavefront p in
-  nub $ [(o, f) | (o, f) <- wf, fl o] ++
-        [(o, f) | (o, _) <- wf, f <- all_fields als, ol o]
+  nub $ [(o, f) | (o, f) <- wf, fl als o] 
+        ++
+        [(o, f) | (o, f') <- wf, -- *some* o's field is in wf
+                  f <- obj_fields als o, 
+                  ol als o]
 
 {- 
 
@@ -124,23 +142,29 @@ possible fields.
 
 -}
 
+all_fields_in_wf als o wf = 
+  let ofs = obj_fields als o
+      wfs = [f | (o', f) <- wf, o' == o]   
+  in  (sort ofs) == (sort wfs)
+
 wlt als p =
   let wf = wavefront p
       fs = all_fields als in
-  nub $ [(o, f) | (o, f) <- wf, fl o] ++
-        [(o, f) | f' <- fs, (o, _) <- wf, elem (o, f') wf, f <- fs, ol o]
+  nub $ [(o, f) | (o, f)  <- wf, fl als o] ++
+        [(o, f) | (o, f) <- wf, 
+                  -- *all* o's fields are in the wf                  
+                  all_fields_in_wf als o wf,
+                  elem f $ obj_fields als o,
+                  ol als o]
 
--- instance WavefrontDimension where
---    ol =  const True
-
-{-----------------------------------------------------}
-{-   5.2, 5.4: The Policy and Protection Dimensions  -}
-{-----------------------------------------------------}
+-- {-----------------------------------------------------}
+-- {-   5.2, 5.4: The Policy and Protection Dimensions  -}
+-- {-----------------------------------------------------}
 
 class PolicyDimension where
-  sr, lr :: Object -> Bool
-  sr = not . lr
-  lr = not . sr
+  sr, lr :: [Object] -> ObjId -> Bool
+  sr als = not . (lr als)
+  lr als = not . (sr als)
 
 class ProtectionDimension where
   is, ds :: ObjectOrNull -> Bool
@@ -163,7 +187,7 @@ expose_r als p = nub $ [obj_f als o f |
       prepi = pre i p,
   elem (kind pi) [M, A],
   elem (o, f) $ wgt als prepi,
-  sr o,
+  sr als o,
   is $ deref als $ new pi,
   is $ obj_f als o f]
 
@@ -179,7 +203,7 @@ m_plus als o p = length $ [pi |
   elem (kind pi) [M, A],
   (deref als $ new pi) == Just o,
   elem (source pi, field pi) $ wgt als prepi,
-  lr $ source pi]
+  lr als $ source pi]
 
 m_minus als o p = length $ [pi |
   i <- [0 .. length p - 1],
@@ -188,7 +212,7 @@ m_minus als o p = length $ [pi |
   elem (kind pi) [M, A],
   (deref als $ new pi) == Just o,
   elem (source pi, field pi) $ wlt als prepi,
-  lr $ source pi]
+  lr als $ source pi]
 
 m :: (WavefrontDimension, PolicyDimension) =>
      AL -> ObjectOrNull -> Log -> Int
@@ -219,11 +243,11 @@ data I = Inf | Ind Int deriving (Eq, Ord, Show)
 
 -- This is relevant for the mutator, not the collector
 class ThresholdDimension where
-  dt :: I -> Object -> Bool
+  dt :: I -> [Object] -> ObjId -> Bool
   dt i = case i of Ind j -> dk j ; _ -> dinf
 
-  dinf :: Object -> Bool
-  dk   :: Int -> Object -> Bool
+  dinf :: [Object] -> ObjId -> Bool
+  dk   :: Int -> [Object] -> ObjId -> Bool
 
 {-----------------------------------------------------}
 {-        5.4: Protection Dimension (contd.)         -}
@@ -239,10 +263,9 @@ expose_d als p = nub $ [o |
   not $ elem (source pi, field pi) $ wlt als prepi,
   ds o]
 
--- Final version of the expos function
+-- Final version of the expose function
 
 expose_rcd :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
               AL -> [LogEntry] -> [ObjectOrNull]
 expose_rcd als p = nub $ expose_rc als p ++ expose_d als p
 
--- TODO: try examples
