@@ -4,9 +4,9 @@
 module GCDerivation where
 
 import Data.Map as M
+import Data.Maybe as MB
 import Data.List as L
 import Control.Monad
-import Data.Maybe
 
 {-----------------------------------------------------------------}
 {--                   Basic definitions                         --}
@@ -178,8 +178,8 @@ deref als ref = do
 
 -- expose_r from Section 5.2.1
 expose_r :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
-         AL -> [LogEntry] -> [ObjectOrNull]
-expose_r als p = nub $ [obj_f als o f |
+         AL -> [LogEntry] -> [ObjId]
+expose_r als p = ids $ nub $ [obj_f als o f |
   i <- [0 .. length p - 1],
   let pi = p !! i
       o = source pi
@@ -215,23 +215,28 @@ m_minus als o p = length $ [pi |
   lr als $ source pi]
 
 m :: (WavefrontDimension, PolicyDimension) =>
-     AL -> ObjectOrNull -> Log -> Int
-m als on p = case on of
+     AL -> Ref -> Log -> Int
+m als ref p = 
+ case deref als ref of
  Just o -> m_plus als o p - m_minus als o p
  Nothing -> 0
 
+maybeId :: ObjectOrNull -> Ref
+maybeId on = do
+  o <- on
+  return $ objid o
+
 -- Collection by counting
 expose_c :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
-         AL -> [LogEntry] -> [ObjectOrNull]
-expose_c als p = nub $ [n |
+         AL -> [LogEntry] -> [ObjId]
+expose_c als p = ids $ nub $ [n |
   i <- [0 .. length p - 1],
   let pi = p !! i
       n  = deref als $ new pi,
-  m als n p > 0, is n]
-
+  m als (maybeId n) p > 0, is n]
 
 expose_rc :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
-         AL -> [LogEntry] -> [ObjectOrNull]
+         AL -> [LogEntry] -> [ObjId]
 expose_rc als p = nub $ expose_r als p ++ expose_c als p
 
 
@@ -254,8 +259,8 @@ class ThresholdDimension where
 {-----------------------------------------------------}
 
 expose_d :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
-         AL -> [LogEntry] -> [ObjectOrNull]
-expose_d als p = nub $ [o |
+         AL -> [LogEntry] -> [ObjId]
+expose_d als p = ids $ nub $ [o |
   i <- [0 .. length p - 1],
   let pi = p !! i
       o  = deref als $ old pi
@@ -266,77 +271,11 @@ expose_d als p = nub $ [o |
 -- Final version of the expose function
 
 expose_rcd :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
-              AL -> [LogEntry] -> [ObjectOrNull]
+              AL -> [LogEntry] -> [ObjId]
 expose_rcd als p = nub $ expose_rc als p ++ expose_d als p
 
 {-----------------------------------------------------------------}
 {--                    The  examples from the paper             --}
 {-----------------------------------------------------------------}
 
-{- Example 2.3 -}
 
--- Initial objects
-r1, a, b, c, d, e :: Object
-r1 = O "r1" $ fromList $ 
-              [("f1", Nothing), ("f2", Just "A"), ("f3", Just "E")]
-a  = O "A" $ fromList $ 
-             [("f1", Nothing), ("f2", Nothing), ("f3", Nothing)]
-b = O "B" empty
-c = O "C" $ fromList [("f", Just "B")]
-d = O "D" $ fromList [("f", Just "E")]
-e = O "E" empty
-
--- Final set of the objects
-al_final = [r1, a, b, c, d, e]
-
-prefix_pe :: [LogEntry]
-prefix_pe = [
-  LE T "r1" "f2" (Just "A") (Just "A"),
-  LE T "A"  "f1" Nothing    Nothing,
-  LE T "r1" "f3" Nothing    Nothing,
-  --
-  LE M "r1" "f1" Nothing    (Just "B"),
-  LE M "A"  "f1" Nothing    (Just "B"),
-  LE M "r1" "f3" Nothing    (Just "E"),
-  --
-  LE M "A"  "f2" (Just "C")  Nothing,
-  LE M "r1" "f1" (Just "B")  Nothing,
-  LE T "A"  "f2" Nothing     Nothing,
-  --
-  LE T "r1" "f1" Nothing    Nothing,
-  LE M "A"  "f3" (Just "D") Nothing,
-  LE M "A"  "f1" (Just "B") Nothing,
-  --
-  LE T "A"  "f3" Nothing    Nothing]
-
--- Computing the wavefront
-
-wf_pe :: [(ObjId, FName)]
-wf_pe = wavefront prefix_pe 
--- try wf_pre from the interpreter
--- Okay, that works!
-
-{- Example 3.1 -}
-ex_apex_res :: [ObjId]
-ex_apex_res = expose_apex al_final prefix_pe 
--- OK, that works too
-
-{- Example 5.1 -}
-
--- Taking FL = empty in the wavefront dimension
-instance WavefrontDimension where
-    fl _ =  const False
-
--- remove the last entry
-pref_51 = take 12 prefix_pe
-
--- wavefronts from the example
-wf_51   = wavefront pref_51    -- OK
-
-wgt_51  = wgt al_final pref_51 -- OK
-wlt_51  = wlt al_final pref_51 -- OK
-
-
-
-
--- TODO: examples from the rest of the paper
