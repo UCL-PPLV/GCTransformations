@@ -194,14 +194,14 @@ expose_r als p = ids $ nub $ [obj_f als o f |
 -- 5.2.2: Cross-wavefront counts
 
 m_plus, m_minus :: (WavefrontDimension, PolicyDimension) =>
-                   AL -> Object -> Log -> Int
+                   AL -> ObjId -> Log -> Int
 
 m_plus als o p = length $ [pi |
   i <- [0 .. length p - 1],
   let pi = p !! i
       prepi = pre i p,
   elem (kind pi) [M, A],
-  (deref als $ new pi) == Just o,
+  new pi == Just o,
   elem (source pi, field pi) $ wgt als prepi,
   lr als $ source pi]
 
@@ -210,16 +210,16 @@ m_minus als o p = length $ [pi |
   let pi = p !! i
       prepi = pre i p,
   elem (kind pi) [M, A],
-  (deref als $ new pi) == Just o,
+  new pi == Just o,
   elem (source pi, field pi) $ wlt als prepi,
   lr als $ source pi]
 
 m :: (WavefrontDimension, PolicyDimension) =>
      AL -> Ref -> Log -> Int
 m als ref p = 
- case deref als ref of
- Just o -> m_plus als o p - m_minus als o p
- Nothing -> 0
+ case ref of
+  Just o -> m_plus als o p - m_minus als o p
+  Nothing -> 0
 
 maybeId :: ObjectOrNull -> Ref
 maybeId on = do

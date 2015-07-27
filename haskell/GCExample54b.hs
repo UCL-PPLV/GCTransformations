@@ -11,11 +11,10 @@ import Data.Maybe
 import GCDerivation
 import GCExample23
 
-{- Example 5.4 -}
+{- Example 5.4, part 2 -}
 
--- taking a specific policy dimension
 instance WavefrontDimension where
-    fl _ =  const True
+  fl _ o =  not (o == "r1")
 
 instance PolicyDimension where
   lr _ = const True
@@ -23,6 +22,16 @@ instance PolicyDimension where
 instance ProtectionDimension where
   is = const True
 
--- TODO: BUG!
+pref_54 = take 12 prefix_pe
+wgt_54  = wgt al_final pref_54
+wlt_54  = wlt al_final pref_54
+
+mp_e = m_plus al_final "E" prefix_pe
+-- 1
+
+mm_e = m_minus al_final "E" prefix_pe
+-- 0
+
 ex_res_54 = expose_c al_final prefix_pe
+-- ["B","E"] -- OK
 
