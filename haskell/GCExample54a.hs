@@ -14,7 +14,6 @@ import GCExample23
 {- Example 5.4, part 1 -}
 
 instance WavefrontDimension where
---  fl _ o =  not (o == "r1")
   fl _ o = True
 
 instance PolicyDimension where
@@ -35,5 +34,6 @@ mm_e = m_minus al_final "E" prefix_pe
 -- 1
 
 -- BUG: the difference b/w mp_e and mm_e should be > 0
+-- Check the parameters of m_plus and m_minus
 ex_res_54 = expose_c al_final prefix_pe
 
