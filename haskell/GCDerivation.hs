@@ -248,11 +248,40 @@ data I = Inf | Ind Int deriving (Eq, Ord, Show)
 
 -- This is relevant for the mutator, not the collector
 class ThresholdDimension where
-  dt :: I -> [Object] -> ObjId -> Bool
-  dt i = case i of Ind j -> dk j ; _ -> dinf
+  dk :: I
 
-  dinf :: [Object] -> ObjId -> Bool
-  dk   :: Int -> [Object] -> ObjId -> Bool
+gt :: I -> I -> Bool
+gt x y = case (x, y) of 
+   (Inf, _) -> True
+   (Ind n, Ind m) -> n >= m
+   _ -> False
+
+-- Definition of M_k(o, P)
+mk :: (WavefrontDimension, PolicyDimension, ThresholdDimension) =>
+     AL -> Ref -> Log -> I
+mk als ref p = 
+  let ms = [m als ref p | 
+       i <- [0 .. length p - 1],
+       let prepi = pre i p,
+       (Ind $ m als ref prepi) `gt` dk]
+  in  if L.null ms 
+      then Ind $ m als ref p
+      else Inf   
+
+-- Collection by counting with arbitrary dimension
+expose_ck :: (WavefrontDimension, ProtectionDimension, 
+              PolicyDimension, ThresholdDimension) =>
+         AL -> [LogEntry] -> [ObjId]
+expose_ck als p = ids $ nub $ [n |
+  i <- [0 .. length p - 1],
+  let pi = p !! i
+      n  = deref als $ new pi,
+  mk als (maybeId n) p `gt` (Ind 0), is n]
+
+expose_rck :: (WavefrontDimension, ProtectionDimension, 
+              PolicyDimension, ThresholdDimension) =>
+          AL -> [LogEntry] -> [ObjId]
+expose_rck als p = nub $ expose_ck als p ++ expose_ck als p
 
 {-----------------------------------------------------}
 {-        5.4: Protection Dimension (contd.)         -}

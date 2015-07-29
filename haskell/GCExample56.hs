@@ -11,27 +11,27 @@ import Data.Maybe
 import GCDerivation
 import GCExample23
 
-{- Example 5.4, part 2 -}
+{- Example 5.6 -}
 
 instance WavefrontDimension where
-  fl _ o =  o /= "r1"
+  fl _ o = True
 
 instance PolicyDimension where
-  lr _ = const True
+  lr _ o = o /= "r1"
 
 instance ProtectionDimension where
   is = const True
 
-pref_54 = take 12 prefix_pe
-wgt_54  = wgt al_final pref_54
-wlt_54  = wlt al_final pref_54
+instance ThresholdDimension where
+  dk = Ind 1
 
-mp_e = m_plus al_final "E" prefix_pe
--- 1
+pref3 = pre 3 prefix_pe
 
-mm_e = m_minus al_final "E" prefix_pe
+mp_b = m_plus al_final "B" pref3
 -- 0
 
-ex_res_54 = expose_c al_final prefix_pe
--- ["B","E"] -- OK
+mm_b = m_minus al_final "B" pref3
+-- 0
 
+ex_res56 = expose_ck al_final prefix_pe
+-- ["A","B","E"]
