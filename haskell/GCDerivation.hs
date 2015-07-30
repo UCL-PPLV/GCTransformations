@@ -304,13 +304,9 @@ expose_d als p = ids $ nub $ [o |
   ds o]
 
 -- Final version of the expose function
-
-expose_rcd :: (WavefrontDimension, ProtectionDimension, PolicyDimension) =>
+expose_rcd :: (WavefrontDimension, ProtectionDimension, 
+               PolicyDimension, ThresholdDimension) =>
               AL -> [LogEntry] -> [ObjId]
-expose_rcd als p = nub $ expose_rc als p ++ expose_d als p
-
-{-----------------------------------------------------------------}
-{--                    The  examples from the paper             --}
-{-----------------------------------------------------------------}
+expose_rcd als p = nub $ expose_rck als p ++ expose_d als p
 
 
