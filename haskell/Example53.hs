@@ -28,7 +28,7 @@ mmb_53 = m_plus al_final "B" prefix_pe
 -- 1
 -- OK
 
--- The follosing equals to mpb_53 - mmb_53
+-- The following is equal to mpb_53 - mmb_53
 m_53 = m al_final (Just "B") prefix_pe
 -- 0
 -- OK
