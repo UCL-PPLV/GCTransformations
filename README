@@ -1,0 +1,46 @@
+Correctness-Preserving GC Transformations
+=========================================
+
+This directory contains implementation and (in the future)
+formalization of the framework for correctness-preserving derivations
+of concurrent garbage collectors by Vechev et al. [VYB06].
+
+The structure of the project:
+
+- ./haskell -- a folder with the Haskell prototype of parametrised
+  expose functions. Different dimensions are implemented as type
+  classes with mutually-disjoint functions, specifying the
+  corresponding partitions.
+   |
+   
+----- GCDerivation.hs -- this file contains implementation of the main
+      GC machinery concerning parametrized instances of the explore
+      function. The same file also contains definitions of all the
+      dimension type classes.
+   | 
+
+----- ExampleXY.hs -- example files, corresponding to those labelled
+      as X.Y in the [VYB06] paper. The comments after the expressions
+      describe the results obtained by evaluating them.
+
+Building the project
+====================
+
+-- Haskell --
+
+Run
+
+make clean; make
+
+from the folder "haskell" to compile the project.
+
+Individual example files can be loaded into the ghci REPL as follows
+
+:load ExampleXY.hs
+
+
+References
+==========
+
+[VYB06] M. Vechev, E. Yahav, D. Bacon. Correctness-Preserving
+Derivation of Concurrent Garbage Collection Algorithms. PLDI'06.
