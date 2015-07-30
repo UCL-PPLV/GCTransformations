@@ -20,13 +20,15 @@ instance WavefrontDimension where
 instance PolicyDimension where
   lr _ o = o == "A"
 
-mp_53 = m_plus al_final "B" prefix_pe
+mpb_53 = m_plus al_final "B" prefix_pe
 -- 1
+-- OK
 
-mm_53 = m_plus al_final "B" prefix_pe
+mmb_53 = m_plus al_final "B" prefix_pe
 -- 1
+-- OK
 
--- The follosing equals to mp_53 - mm_53
+-- The follosing equals to mpb_53 - mmb_53
 m_53 = m al_final (Just "B") prefix_pe
 -- 0
-
+-- OK

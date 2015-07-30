@@ -50,5 +50,5 @@ prefix_pe = [
 
 wf_pe :: [(ObjId, FName)]
 wf_pe = wavefront prefix_pe 
--- try wf_pre from the interpreter
--- Okay, that works!
+-- [("r1","f2"),("A","f1"),("r1","f3"),("A","f2"),("r1","f1"),("A","f3")]
+-- OK

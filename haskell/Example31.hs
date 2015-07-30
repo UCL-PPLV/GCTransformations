@@ -13,7 +13,9 @@ import Example23
 
 
 {- Example 3.1 -}
+
 ex_apex_res :: [ObjId]
 ex_apex_res = expose_apex al_final prefix_pe 
--- OK, that works too
+-- ["E"]
+-- OK
 
