@@ -19,9 +19,9 @@ The structure of the project:
       dimension type classes.
    | 
 
------ ExampleXY.hs -- example files, corresponding to those labelled
-      as X.Y in the [VYB06] paper. The comments after the expressions
-      describe the results obtained by evaluating them.
+----- ExampleXY.hs -- example files, corresponding to the case studies
+      labelled as X.Y in the [VYB06] paper. The comments after the
+      expressions describe the results obtained by evaluating them.
 
 Building the project
 ====================
