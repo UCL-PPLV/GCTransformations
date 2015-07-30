@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NullaryTypeClasses #-}
 
-module GCExample53 where
+module Example53 where
 
 import Data.Map as M
 import Data.Maybe as MB
@@ -9,7 +9,7 @@ import Data.List as L
 import Control.Monad
 import Data.Maybe
 import GCDerivation
-import GCExample23
+import Example23
 
 {- Example 5.3 -}
 
@@ -18,10 +18,15 @@ instance WavefrontDimension where
     fl _ =  const True
 
 instance PolicyDimension where
-  lr _ id = id == "A"
+  lr _ o = o == "A"
 
-m_53 = m al_final (Just "b") prefix_pe
+mp_53 = m_plus al_final "B" prefix_pe
+-- 1
 
--- also try 
-mp_53 = m_plus al_final b prefix_pe
-mm_53 = m_plus al_final b prefix_pe
+mm_53 = m_plus al_final "B" prefix_pe
+-- 1
+
+-- The follosing equals to mp_53 - mm_53
+m_53 = m al_final (Just "B") prefix_pe
+-- 0
+

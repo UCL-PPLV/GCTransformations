@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NullaryTypeClasses #-}
 
-module GCExample31 where
+module Example31 where
 
 import Data.Map as M
 import Data.Maybe as MB
@@ -9,7 +9,7 @@ import Data.List as L
 import Control.Monad
 import Data.Maybe
 import GCDerivation
-import GCExample23
+import Example23
 
 
 {- Example 3.1 -}

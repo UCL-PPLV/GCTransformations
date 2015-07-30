@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NullaryTypeClasses #-}
 
-module GCExample54 where
+module Example54a where
 
 import Data.Map as M
 import Data.Maybe as MB
@@ -9,7 +9,7 @@ import Data.List as L
 import Control.Monad
 import Data.Maybe
 import GCDerivation
-import GCExample23
+import Example23
 
 {- Example 5.4, part 1 -}
 
@@ -35,5 +35,5 @@ mm_e = m_minus al_final "E" prefix_pe
 
 -- BUG: the difference b/w mp_e and mm_e should be > 0
 -- Check the parameters of m_plus and m_minus
-ex_res_54 = expose_c al_final prefix_pe
-
+res_54 = expose_c al_final prefix_pe
+-- []

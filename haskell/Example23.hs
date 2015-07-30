@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NullaryTypeClasses #-}
 
-module GCExample23 where
+module Example23 where
 
 import Data.Map as M
 import Data.Maybe as MB

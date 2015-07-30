@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NullaryTypeClasses #-}
 
-module GCExample54 where
+module Example54b where
 
 import Data.Map as M
 import Data.Maybe as MB
@@ -9,10 +9,11 @@ import Data.List as L
 import Control.Monad
 import Data.Maybe
 import GCDerivation
-import GCExample23
+import Example23
 
 {- Example 5.4, part 2 -}
 
+-- exclude r1 from FL
 instance WavefrontDimension where
   fl _ o =  o /= "r1"
 
@@ -32,6 +33,6 @@ mp_e = m_plus al_final "E" prefix_pe
 mm_e = m_minus al_final "E" prefix_pe
 -- 0
 
-ex_res_54 = expose_c al_final prefix_pe
+res_54 = expose_c al_final prefix_pe
 -- ["B","E"] -- OK
 
