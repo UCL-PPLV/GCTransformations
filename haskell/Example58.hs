@@ -30,3 +30,5 @@ res58a = expose_d al_final prefix_pe
 -- OK
 
 res58b = expose_rcd al_final prefix_pe
+-- ["C","B","D"]
+-- OK (?)
