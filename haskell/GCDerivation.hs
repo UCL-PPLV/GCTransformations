@@ -28,7 +28,7 @@ type Ref = Maybe ObjId
 type AL = [Object]
 
 -- Mapping fields to allocated values
--- The parameter AL is always passed as list 
+-- The parameter AL is always passed as a list 
 h :: AL -> ObjId -> FName -> ObjectOrNull
 h als oid fname = do
   -- Find the object by id "oid"
@@ -104,6 +104,14 @@ class WavefrontDimension where
 all_fields :: [Object] -> [FName]
 all_fields als = [fname | o <- als, fname <- keys $ fields o]
 
+-- util function for getting all fields of an object by id
+obj_fields :: [Object] -> ObjId -> [FName]
+obj_fields als id = 
+ let tmp = do o <- L.find (\ob -> objid ob == id) als
+              return $ keys $ fields o
+ in case tmp of Just fs -> fs; _ -> []
+
+
 {- two views to the wavefront -}
 wgt, wlt :: WavefrontDimension => [Object] -> Log -> [(ObjId, FName)]
 
@@ -114,15 +122,7 @@ fields f' of the allocated objects and all objects o in the
 wavefront, pairing them and returning the combinations.
 
 -}
-
--- util function for getting all fields of an object by id
-obj_fields :: [Object] -> ObjId -> [FName]
-obj_fields als id = 
- let tmp = do o <- L.find (\ob -> objid ob == id) als
-              return $ keys $ fields o
- in case tmp of Just fs -> fs; _ -> []
-           
-
+          
 wgt als p =
   let wf = wavefront p in
   nub $ [(o, f) | (o, f) <- wf, fl als o] 
@@ -130,15 +130,14 @@ wgt als p =
         [(o, f) | (o, f') <- wf, -- *some* o's field is in wf
                   f <- obj_fields als o, 
                   ol als o]
-
 {- 
 
 Check, whether the following reading of the quantifiers is accurate:
 essentially, the second component of the concatenation iterates over
 all available fields f' of the allocated objects and all objects o in
-the wavefront. It then checks whether the pair (o, f') belongs to the
-wavefront wf, and in this case returns pairing of this object with all
-possible fields.
+the wavefront. It then checks whether all pairs fields of o belong to
+the wavefront wf, and in this case returns pairing of this object with
+all possible fields.
 
 -}
 
