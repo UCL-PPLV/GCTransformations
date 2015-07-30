@@ -294,6 +294,7 @@ expose_d als p = ids $ nub $ [o |
   let pi = p !! i
       o  = deref als $ old pi
       prepi = pre i p,
+  kind pi == M,
   not $ elem (source pi, field pi) $ wlt als prepi,
   ds o]
 

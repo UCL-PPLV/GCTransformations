@@ -26,4 +26,5 @@ instance ThresholdDimension where
   dk = Inf
 
 res58 = expose_d al_final prefix_pe
+-- ["C","B","D"]
 
