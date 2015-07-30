@@ -250,10 +250,15 @@ data I = Inf | Ind Int deriving (Eq, Ord, Show)
 class ThresholdDimension where
   dk :: I
 
-gt :: I -> I -> Bool
-gt x y = case (x, y) of 
+ge, gt :: I -> I -> Bool
+ge x y = case (x, y) of 
    (Inf, _) -> True
    (Ind n, Ind m) -> n >= m
+   _ -> False
+
+gt x y = case (x, y) of 
+   (Inf, _) -> True
+   (Ind n, Ind m) -> n > m
    _ -> False
 
 -- Definition of M_k(o, P)
@@ -263,7 +268,7 @@ mk als ref p =
   let ms = [m als ref p | 
        i <- [0 .. length p - 1],
        let prepi = pre i p,
-       (Ind $ m als ref prepi) `gt` dk]
+       (Ind $ m als ref prepi) `ge` dk]
   in  if L.null ms 
       then Ind $ m als ref p
       else Inf   

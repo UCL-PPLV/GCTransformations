@@ -33,6 +33,6 @@ mp_e = m_plus al_final "E" prefix_pe
 mm_e = m_minus al_final "E" prefix_pe
 -- 0
 
-res_54 = expose_c al_final prefix_pe
+res_54b = expose_c al_final prefix_pe
 -- ["B","E"] -- OK
 

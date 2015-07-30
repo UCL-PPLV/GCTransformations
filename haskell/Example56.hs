@@ -25,15 +25,26 @@ instance ProtectionDimension where
 instance ThresholdDimension where
   dk = Ind 1
 
-pref3 = pre 3 prefix_pe
+{- 
 
-mp_b = m_plus al_final "B" pref3
--- 0
+In contrast with Example 5.6 from the paper, the index i in the log
+prefix, which delivers M(B, pre i prefix_pe) = 1 is not 3, but
+5. However, since the definition of M_k(o, P) accepts any index (which
+is existentially quantified), the object B will still make it to the
+result res56 of the expose_ck function, and, hence, will be exposed.
 
-mm_b = m_minus al_final "B" pref3
+-}
+
+pre3 = pre 5 prefix_pe
+
+mp_b = m_plus al_final "B" pre3
+-- 1
+
+mm_b = m_minus al_final "B" pre3
 -- 0
 
 res56 = expose_ck al_final prefix_pe
--- ["A","B","E"]
--- [REM] is above okay?
+-- ["B"]
+-- Seems OK
+
 

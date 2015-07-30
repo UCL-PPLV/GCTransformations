@@ -34,6 +34,6 @@ mm_e = m_minus al_final "E" prefix_pe
 -- 0
 -- OK
 
-res_54 = expose_c al_final prefix_pe
+res_54a = expose_c al_final prefix_pe
 -- ["E"]
 -- OK

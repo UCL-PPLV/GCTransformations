@@ -25,8 +25,8 @@ instance ProtectionDimension where
 instance ThresholdDimension where
   dk = Inf
 
-res58 = expose_d al_final prefix_pe
+res58a = expose_d al_final prefix_pe
 -- ["C","B","D"]
 -- OK
 
-res58a = expose_rcd al_final prefix_pe
+res58b = expose_rcd al_final prefix_pe
