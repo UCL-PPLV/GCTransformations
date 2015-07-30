@@ -308,5 +308,3 @@ expose_rcd :: (WavefrontDimension, ProtectionDimension,
                PolicyDimension, ThresholdDimension) =>
               AL -> [LogEntry] -> [ObjId]
 expose_rcd als p = nub $ expose_rck als p ++ expose_d als p
-
-
