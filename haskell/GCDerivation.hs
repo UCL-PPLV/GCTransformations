@@ -210,7 +210,7 @@ m_minus als o p = length $ [pi |
   let pi = p !! i
       prepi = pre i p,
   elem (kind pi) [M, A],
-  new pi == Just o,
+  old pi == Just o,
   elem (source pi, field pi) $ wlt als prepi,
   lr als $ source pi]
 
