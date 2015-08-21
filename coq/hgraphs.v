@@ -142,6 +142,46 @@ by rewrite joinA -[_\+x:->_]joinC -joinA; congr (_ \+ _).
 Qed.
 
 
+(* Modify an existing object x's field fld in the heap and return the
+pair (new_heap, old_heap_value) *)
+
+Definition modify h (g: graph h) (x : ptr) (fld : nat) (new : ptr) := 
+  if x \in dom h 
+  then let: fs := contents g x
+       in   if size fs <= fld then (h, null)
+            else let: h' := x :-> set_nth null fs fld new \+ free x h
+                 in   (h', nth null fs fld)  
+  else (h, null).
+
+Lemma modifyG h (g : graph h) x fld new : 
+  new \in dom h -> graph (modify g x fld new).1.
+Proof.
+move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
+split=>[|y]; case: (g)=>V H.
+- move: (H x Dx)=>[fs][E _]; rewrite !hvalidPtUn.
+  rewrite E hfreePtUn; last by rewrite E in V.
+
+(* TODO: continue here *)
+
+(*  Search _ (free _) (_ \+ _) (_ :-> _). *)
+
+(* first by rewrite {1}E !hvalidPtUn in V *. *)
+(* rewrite hdomPtUn inE; case/andP=>Vt. *)
+(* case N : (x == y)=>/=. *)
+(* - rewrite -(eqP N) hfreePtUn //; exists true, xl, xr; split=>//. *)
+(*   by move=>z /S; rewrite {1}E !inE /= !inE /= !hdomPtUn -E V Vt. *)
+(* move=>Dy; have {Dy} : y \in dom h by rewrite E domUn inE -E V Dy orbT. *)
+(* case: edgeP=>// b' xl' xr' E' _ Dy S' _; rewrite {1 2}E in V E'. *)
+(* move/(hcancel2V V): E'; rewrite N; case=>Exy Ex _. *)
+(* exists b', xl', xr'.  *)
+(* rewrite {1}Ex joinCA freeUnL; last by rewrite hdomPt inE N andbF. *)
+(* rewrite Exy; split=>// z /S'.  *)
+(* by rewrite {1}E !inE /= !inE /= !hdomPtUn !inE !hvalidPtUn. *)
+
+
+
+
+
 
 
 
