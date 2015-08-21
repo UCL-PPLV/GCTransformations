@@ -111,17 +111,36 @@ Proof. by move=>E; rewrite -E in g2 *; rewrite (proof_irrelevance _ g1 g2). Qed.
 (* fnum is the number of its fields  *)
 
 Definition alloc h (x : ptr) (fnum : nat) := 
-   let: fs := ncons fnum null [::] in
-   x :-> fs \+ h.
+   let: fs := ncons fnum null [::]
+   in   x :-> fs \+ h.
+
+(* Auxiliary lemma *)
+Lemma ncons_elem (T : ordType) n (z e : T) : z \in ncons n e [::] ->  z = e.
+Proof.
+by elim: n=>//= n Hi; rewrite inE=>/orP []//; move/eqP.
+Qed.
 
 (* Now we prove that the allocation of a fresh pointer preserves *)
 (* graph-ness. *)
-
 Lemma allocG h (g : graph h) x fnum : 
   x != null -> x \notin dom h -> graph (alloc h x fnum).
 Proof.
-move=> N V; rewrite /alloc; split=>[|y D].
-- by rewrite hvalidPtUn N V/=; case: g=>->. 
+move=> N Ni; rewrite /alloc; split=>[|y D].
+- by rewrite hvalidPtUn N Ni/=; case: g=>->. 
+case:g=>V /(_ y) H; rewrite hdomPtUn inE in D.
+case/andP: D=>V' /orP; case=>[/eqP Z|D].
+- subst y; exists (ncons fnum null [::]); split.
+  + by rewrite (@hfreePtUn _ _ _ _ V').
+  by move=>z /ncons_elem->.
+move/H: (D)=>[fs]{H}[E H]; exists fs; split; last first.
+- move=>z /(H z); rewrite !inE/= !inE hdomPtUn !inE V'/=.
+  by case/orP=>->//=; apply/or3P; constructor 3.
+rewrite freeUnL; last first.
+- rewrite hdomPt inE N/=; apply/eqP=>G; subst y. 
+  by move/negbTE: Ni; rewrite D.
+by rewrite joinA -[_\+x:->_]joinC -joinA; congr (_ \+ _).
+Qed.
+
 
 
 

@@ -76,3 +76,5 @@ cv/*.out
 *.vo 
 *.v.d
 *.glob
+.coq_native/*
+Makefile.coq
