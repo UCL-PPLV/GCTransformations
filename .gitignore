@@ -76,5 +76,5 @@ cv/*.out
 *.vo 
 *.v.d
 *.glob
-.coq_native/*
+.coq-native
 Makefile.coq
