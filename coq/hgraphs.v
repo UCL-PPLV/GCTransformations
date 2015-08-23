@@ -77,6 +77,10 @@ End HeapGraphs.
 
 Notation fields g x := (@contents _ g x).
 
+Lemma graphPt z h (g: graph h) : 
+  z \in dom h -> h = z :-> (fields g z) \+ free z h.
+Proof. by move=>D; case: edgeP; last by rewrite D. Qed.
+
 (* restating the graph properties in terms of booleans *)
 
 Lemma validG h (g : graph h) : valid h.
@@ -114,11 +118,38 @@ Definition alloc h (x : ptr) (fnum : nat) :=
    let: fs := ncons fnum null [::]
    in   x :-> fs \+ h.
 
-(* Auxiliary lemma *)
+(* Auxiliary lemmas *)
 Lemma ncons_elem (T : ordType) n (z e : T) : z \in ncons n e [::] ->  z = e.
 Proof.
 by elim: n=>//= n Hi; rewrite inE=>/orP []//; move/eqP.
 Qed.
+
+
+Lemma ncons_elems (T : ordType) n (z e : T) xs: 
+  z \in ncons n e xs ->  z = e \/ z \in xs.
+Proof.
+elim: n=>/=[|n Hi]; first by right.
+by rewrite inE=>/orP []//; move/eqP; left.
+Qed.
+
+Lemma set_nth_elems z fs fld new:
+  z \in set_nth null fs fld new -> [\/ z == null, z == new | z \in fs].
+Proof.
+elim: fs fld=>[fld|x xs H].
+- by rewrite set_nth_nil; move/ncons_elems; rewrite inE; case=>->;
+  [constructor 1 | constructor 2].
+elim=>[|n Hi G].
+- rewrite inE=>/orP. 
+  case; first by move/eqP=>->; constructor 2.
+  by move=>J; constructor 3; rewrite inE J orbC.
+rewrite inE in G; case/orP: G.
+- by move/eqP=>->; constructor 3; rewrite inE eq_refl.
+move/H; case; do?[move/eqP=>->].
+- by constructor 1.
+- by constructor 2.
+by move=>G; constructor 3; rewrite inE; apply/orP; right.
+Qed.
+
 
 (* Now we prove that the allocation of a fresh pointer preserves *)
 (* graph-ness. *)
@@ -153,35 +184,46 @@ Definition modify h (g: graph h) (x : ptr) (fld : nat) (new : ptr) :=
                  in   (h', nth null fs fld)  
   else (h, null).
 
+(* Modify preserves the graph-ness *)
 Lemma modifyG h (g : graph h) x fld new : 
-  new \in dom h -> graph (modify g x fld new).1.
+  (new \in dom h \/ new == null) -> graph (modify g x fld new).1.
 Proof.
 move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
-split=>[|y]; case: (g)=>V H.
-- move: (H x Dx)=>[fs][E _]; rewrite !hvalidPtUn.
-  rewrite E hfreePtUn; last by rewrite E in V.
+split=>[|y].
+- move: ((proj2 g) x Dx)=>[fs][E _]; rewrite !hvalidPtUn.
+  move: (proj1 g)=>V; rewrite E hfreePtUn; last by rewrite E in V.
+  rewrite E in V; move/hvalidPt_cond: (V)=>->/=.
+  by move/validR: V=>->; rewrite domF inE eq_refl. 
+move=> Dy; rewrite hdomPtUn inE in Dy.
+case/andP: Dy=>V'/orP; case=>[/eqP Z|Dy].
+- subst y; exists (set_nth null (fields g x) fld new).
+  rewrite hfreePtUn; last first; [| split=>//].
+  + rewrite hvalidPtUn; move/hvalidPt_cond: (V')=>->/=.
+    by move/validR: (V')=>->; rewrite domF inE eq_refl. 
+  
+- move=>z G; rewrite inE /= inE/=; apply/orP.
+  rewrite hdomPtUn inE V'/=.
+  move: ((proj2 g) _ Dx)=>[fs][E]G'; rewrite (edgeE E) in G.
+  move:(G' z)=>{G'}G'; move/set_nth_elems: G.
+  case; first by move=>->; left.
+  + move/eqP=>Z; subst new. case: Dn; last by move=>->; left.
+    by move=>D; right; rewrite domF inE; case X: (x == z).
+  move/G'; rewrite inE/=inE=>/orP; case; first by left.
+  by rewrite domF inE=>->; right; case X: (x == z).
 
-(* TODO: continue here *)
+have Y: y == x = false by apply/eqP =>E; rewrite domF inE E eq_refl in Dy.
+have Dy': y \in dom h by rewrite domF inE eq_sym Y in Dy.
+move/(graphPt g): (Dy')=>E.
+exists (fields g y); split.
 
-(*  Search _ (free _) (_ \+ _) (_ :-> _). *)
+- rewrite hfreePtUn2=>//; rewrite Y/=; rewrite joinCA; congr (_ \+ _).
+  rewrite {1}E hfreePtUn2; last by move: (proj1 g); rewrite {1} E.
+  by rewrite eq_sym Y freeF eq_sym Y.
 
-(* first by rewrite {1}E !hvalidPtUn in V *. *)
-(* rewrite hdomPtUn inE; case/andP=>Vt. *)
-(* case N : (x == y)=>/=. *)
-(* - rewrite -(eqP N) hfreePtUn //; exists true, xl, xr; split=>//. *)
-(*   by move=>z /S; rewrite {1}E !inE /= !inE /= !hdomPtUn -E V Vt. *)
-(* move=>Dy; have {Dy} : y \in dom h by rewrite E domUn inE -E V Dy orbT. *)
-(* case: edgeP=>// b' xl' xr' E' _ Dy S' _; rewrite {1 2}E in V E'. *)
-(* move/(hcancel2V V): E'; rewrite N; case=>Exy Ex _. *)
-(* exists b', xl', xr'.  *)
-(* rewrite {1}Ex joinCA freeUnL; last by rewrite hdomPt inE N andbF. *)
-(* rewrite Exy; split=>// z /S'.  *)
-(* by rewrite {1}E !inE /= !inE /= !hdomPtUn !inE !hvalidPtUn. *)
-
-
-
-
-
-
-
-
+move=>z; rewrite !inE hdomPtUn inE V'/=.
+case: edgeP=>[fs E' _ _ /(_ z)|]; last by rewrite Dy'.
+move=>H Dz; move/H :Dz; rewrite !inE=>/orP; case; first by move=>->.
+move=>Dz; rewrite domF inE; case X: (x == z); apply/orP.
+- by constructor 2.
+by right; rewrite Dz orbC.
+Qed.
