@@ -13,15 +13,26 @@ The structure of the project:
   corresponding partitions.
    |
    
------ GCDerivation.hs -- this file contains implementation of the main
-      GC machinery concerning parametrized instances of the explore
-      function. The same file also contains definitions of all the
-      dimension type classes.
+---- GCDerivation.hs -- this file contains implementation of the main
+     GC machinery concerning parametrized instances of the explore
+     function. The same file also contains definitions of all the
+     dimension type classes.
    | 
+---- ExampleXY.hs -- example files, corresponding to the case studies
+     labelled as X.Y in the [VYB06] paper. The comments after the
+     expressions describe the results obtained by evaluating them.
 
------ ExampleXY.hs -- example files, corresponding to the case studies
-      labelled as X.Y in the [VYB06] paper. The comments after the
-      expressions describe the results obtained by evaluating them.
+- ./coq -- a Coq formalization of the collector's exposing functions
+  and their correctness wrt. graph reachability
+   |
+---- hgaphs.v -- a theory of object graphs, including facts about
+     allocation/mutation.
+   |
+---- logs.v -- implementation of collector/mutator logs
+   |
+---- ...
+
+
 
 Building the project
 ====================
