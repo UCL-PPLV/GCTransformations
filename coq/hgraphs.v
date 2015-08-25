@@ -186,9 +186,17 @@ Definition modify h (g: graph h) (x : ptr) (fld : nat) (new : ptr) :=
 
 (* Modify preserves the graph-ness *)
 Lemma modifyG h (g : graph h) x fld new : 
-  (new \in dom h \/ new == null) -> graph (modify g x fld new).1.
+  let: res := modify g x fld new in
+  (new \in dom h \/ new == null) -> 
+  graph res.1 /\ (res.2 \in [predU pred1 null & dom h]).
 Proof.
 move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
+split; last first. 
+- case: edgeP; last by rewrite Dx.
+  move=>xs _ _ _ H.
+  case X: (fld < size xs); first by apply: (H _ (mem_nth _ X)).
+  + move/negbT: X=>X; rewrite -ltnNge /= in X.
+  by rewrite (nth_default null X) inE/=.
 split=>[|y].
 - move: ((proj2 g) x Dx)=>[fs][E _]; rewrite !hvalidPtUn.
   move: (proj1 g)=>V; rewrite E hfreePtUn; last by rewrite E in V.
