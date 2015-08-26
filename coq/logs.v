@@ -96,8 +96,9 @@ Fixpoint executeLog (h : heap) (g : graph h) (l : log) :
   | (Entry M x fld old new) :: ls =>
       condK (@modifyG h g x fld new) (fun pf => executeLog (proj1 pf) ls)
 
-  (* Tracing entry - don nothing *)
-  | (Entry T _ _ _ _) :: ls => executeLog g ls
+  (* Tracing entry - do nothing, but enforce "sanity requirements" *)
+  | (Entry T x fld old new) :: ls => 
+      condK (@traceG h g x fld old new) (fun _ => executeLog g ls)
   end.
 
 
@@ -110,7 +111,6 @@ accumulator.
 
  *)
 
-
 Fixpoint goodLog (obs : seq ptr) (l : log) : bool := match l with 
   (* Empty log is good *)    
   | [::] => true
@@ -122,14 +122,16 @@ Fixpoint goodLog (obs : seq ptr) (l : log) : bool := match l with
       
   (* Modification *)
   | (Entry M x fld old new) :: ls =>
+      (x \in obs)                        &&
       (old \in [predU pred1 null & obs]) &&
       (new \in [predU pred1 null & obs]) && 
       goodLog obs ls                                  
 
   (* Tracing entry *)
   | (Entry T x fld old new) :: ls => 
+      (x \in obs)                       &&
+      (old  == new) &&
       (old \in [predU pred1 null & obs]) &&
-      (new \in [predU pred1 null & obs]) &&
       goodLog obs ls
   end.
 
@@ -137,8 +139,9 @@ Lemma goodEqSub (obs obs' : seq ptr) l :
   obs =i obs' -> goodLog obs l = goodLog obs' l.
 Proof.
 elim: l obs obs'=>//x ls Hi obs obs' H.
-case: x=>//=k x fld old new; case: k=>/=; move: (H old) (H new)=>H2 H3;
-rewrite ?inE/= -?H2 -?H3; do? [by congr (_ && _); apply: Hi].
+case: x=>//=k x fld old new; case: k=>/=;
+move: (H old) (H new) (H x)=>H2 H3 H4;
+rewrite ?inE/= -?H2 -?H3 -?H4; do? [by congr (_ && _); apply: Hi].
 move=>_; rewrite H; do![congr (_ && _)].
 by apply: Hi=>z; rewrite !inE -H.
 Qed.
@@ -149,10 +152,17 @@ Theorem goodToExecute h (g: graph h) (l : log) :
   goodLog (keys_of h) l -> exists er, executeLog g l = Some er.
 Proof.
 elim: l h g=>[|e ls]G h g; first by eexists.
-case: e=>k x fld old new/=; case: k=>/=[||fnum]; first by case/andP=>_ H; apply: G.
-- case/andP=>/andP[H1 H2 H3].
-  have X: (new \in dom h) || (new == null) by rewrite !inE/= orbC keys_dom in H2.
-  case: (condKE (modifyG g x fld (new:=new)) 
+case: e=>k x fld old new/=; case: k=>/=[||fnum].
+
+- case/andP=>H.
+  have X: (x \in dom h) && (old == new) && (old \in [predU pred1 null & dom h]).
+  by rewrite -?keys_dom !inE -keys_dom in H *. 
+  by case: (condKE (traceG g fld (new:=new)) 
+        (fun _ => executeLog g ls) X)=>/=E=>->; apply: G.
+- case/andP=>/andP; case=>/andP[H0 H1 H2 H3].
+  have X: (x \in dom h) && ((new \in dom h) || (new == null)).
+  + by rewrite !inE/= orbC keys_dom in H2; rewrite -keys_dom H0/=.
+  case: (condKE (modifyG g fld (new:=new)) 
         (fun pf => executeLog (proj1 pf) ls) X)=>/=[[g' H4]]=>->; apply: G.
   have S: keys_of h =i keys_of (modify g x fld new).1 by apply: modifyDom.
   by rewrite -(goodEqSub ls S).

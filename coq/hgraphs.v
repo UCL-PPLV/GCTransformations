@@ -197,9 +197,19 @@ Definition modify h (g: graph h) (x : ptr) (fld : nat) (new : ptr) :=
   else (h, null).
 
 (* Modify preserves the graph-ness *)
+(*
+
+The following lemma will serve as a "proxy" when executing logs wrt. a
+specific heap. Therefore, even though the definition of modify by
+itself doesn't require that "(x \in dom h)", we put it into the lemma
+anyway, making the clients satisfy it. The same applies for the trace
+funciton defined below.
+
+*)
+
 Lemma modifyG h (g : graph h) x fld new : 
   let: res := modify g x fld new in
-  (new \in dom h) || (new == null) -> 
+    (x \in dom h) && ((new \in dom h) || (new == null)) ->  
   graph res.1 /\ (res.2 \in [predU pred1 null & dom h]).
 Proof.
 move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
@@ -226,7 +236,8 @@ case/andP: Dy=>V'/orP; case=>[/eqP Z|Dy].
   move: ((proj2 g) _ Dx)=>[fs][E]G'; rewrite (edgeE E) in G.
   move:(G' z)=>{G'}G'; move/set_nth_elems: G.
   case; first by move=>->; left.
-  + move/eqP=>Z; subst new. case/orP: Dn; last by move=>->; left.
+  + move/eqP=>Z; subst new. 
+    case/andP: Dn=> _; case/orP; last by move=>->; left.
     by move=>D; right; rewrite domF inE; case X: (x == z).
   move/G'; rewrite inE/=inE=>/orP; case; first by left.
   by rewrite domF inE=>->; right; case X: (x == z).
@@ -250,11 +261,86 @@ Qed.
 
 Lemma modifyDom h (g : graph h) x fld new : 
   let: res := modify g x fld new in
-  (new \in dom h) || (new == null) -> 
+  (x \in dom h) && ((new \in dom h) || (new == null)) ->  
   keys_of h =i keys_of res.1.
 Proof.
-move=>X; case: (modifyG g x fld X)=>g' _.
+move=>X; case: (@modifyG h g x fld new X)=>g' _.
 move: g'; rewrite /modify; do![case: ifP=>//=]=>_ Dx g' z.
 rewrite !keys_dom hdomPtUn !inE (proj1 g')/= domF inE. 
 by case Y: (x == z)=>//; move/eqP: Y=>Y; subst z; rewrite Dx.
 Qed.
+
+(***********************************************************************)
+(* Trace a field of an existing object in a heap                       *) 
+(***********************************************************************)
+
+Definition trace h (g: graph h) (x : ptr) (fld : nat) := 
+  if x \in dom h 
+  then let: fs := contents g x
+       in   if size fs <= fld then h
+            else h
+  else h.
+
+(* Tracing (trivially) preserves the graph-ness *)
+Lemma traceG h (g : graph h) x fld old new : 
+  let: res := trace g x fld in
+  (* The are not "safety", but rather "sanity" requirements *)
+  (x \in dom h) && (old == new) && (old \in [predU pred1 null & dom h]) -> 
+  h = res.
+Proof.
+by move=>Dn; rewrite /trace; case: ifP=>Dx//=; case: ifP=>_//=.
+Qed.
+
+(************************************************************************)
+(*                   [Sanity Constraints]                               *)
+(************************************************************************)
+
+(*
+
+In the development of the mutator/collector actions, along with the
+definition of GC logc from the file logs.v, we exercise a curious pattern.
+
+Specifically, we define the functions, such as alloc, trace and modify
+to be almost-total: they don't even require the target pointer to be
+in the heap and return the "default" result. 
+
+However, these function are used only together with the accompanying
+*G-lemmas, which proved an "abstract view" on the modification in the
+graph topology, resulting from the application of the
+heap-manipulating code. This is, in some sence, reminiscent to the
+heap/math dichotomy observed previoiusly, so the actual activity
+happens on the level of *graphs*, instead of the level of *heaps*.
+
+Furthermore, the same "abstract graph view" *G-lemmas serve an
+additional purpose to impose extra conditions on the values, involved
+into the heap manipulation, even though these values might be
+irrelevant for the exectuoin of a heap-manipulating procedure. For
+instance, the "traceG" lemma imposes a "sanity" requirements on x, old
+and new values:
+
+(x \in dom h) && (old == new) && (old \in [predU pred1 null & dom h])
+
+However, the trace procedure itself is agnostic wrt. to these
+values. So, why we need them? 
+
+The answer is that we want to ensure that clients only use them in
+this specific setting. For example, take the function "executeLog"
+from the logs.v file. It's written in a "failure-passing" CPS,
+incorporating the boolean reflection on the conditions to be
+checked. These conditions are inferred by Coq automatically from the
+types of lemmas that actually implement the "operational content",
+e.g., traceG, modifyG, etc. Employing these lemmas enforces the check
+for sanity conditions. 
+
+As the final client of this approach, let's take a look at the
+"goodToExecute" theorem, which states, when a log is safe to execute
+wrt. to a specific heap without actually executing it. Had we
+forgotten some of the conditions in the definition "goodLog", we
+wouldn't able to prove the theorem. And these conditions ensure that
+the log is adequate wrt. the heap evolution.
+
+A particularly peculiar case is the tracing transition [TODO: explain
+why---it enforces many things but doesn't need them in fact, but
+otherwise we couldn't execute it! Isn't it cool?].
+
+*)
