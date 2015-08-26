@@ -111,6 +111,16 @@ Fixpoint goodLog (obs : seq ptr) (l : log) : bool := match l with
       goodLog obs ls
   end.
 
+Lemma goodEqSub (obs obs' : seq ptr) l :
+  obs =i obs' -> goodLog obs l = goodLog obs' l.
+Proof.
+elim: l obs obs'=>//x ls Hi obs obs' H.
+case: x=>//=k x fld old new; case: k=>/=; move: (H old) (H new)=>H2 H3;
+rewrite ?inE/= -?H2 -?H3; do? [by congr (_ && _); apply: Hi].
+move=>_; rewrite H; do![congr (_ && _)].
+by apply: Hi=>z; rewrite !inE -H.
+Qed.
+
 (* The following theorem states that good logs are good for execution *)
 
 Theorem goodToExecute h (g: graph h) (l : log) :
@@ -122,17 +132,23 @@ case: e=>k x fld old new/=; case: k=>/=[||fnum]; first by case/andP=>_ H; apply:
 - case/andP=>/andP[H1 H2 H3].
   have X: (new \in dom h) || (new == null) by rewrite !inE/= orbC keys_dom in H2.
   case: (condKE (modifyG g x fld (new:=new)) 
-        (fun pf => executeLog (proj1 pf) ls) X)=>/=[[g' H4]]; move=>->.
-  apply: G.
-(* TODO: Use H3 and prove the equality of domains... *)
+        (fun pf => executeLog (proj1 pf) ls) X)=>/=[[g' H4]]=>->; apply: G.
+  suff S: keys_of h =i keys_of (modify g x fld new).1.
+  by rewrite -(goodEqSub ls S).
+
+(* TODO: Use H3 and prove the equality of domains: 
+
+   keys_of h =i keys_of (modify g x fld new).1 *)
   admit.  
 
 case/andP=>/andP[H1]H2 H3.
 have X: (x != null) && (x \notin dom h) by rewrite -keys_dom H1 H2.
-
 case: (condKE (allocG g fnum) (fun pf => executeLog pf ls) X)=>/=[g']->.
-apply: G.
-(* TODO: Use H3 and prove another equality of domains... *)
+apply: G; 
+suff S: x :: keys_of h =i keys_of (alloc h x fnum) by rewrite -(goodEqSub ls S).
+
+(* TODO: Use H3 and prove another equality:
+   x :: keys_of h =i keys_of (alloc h x fnum)  *)
 
 
 
