@@ -111,13 +111,6 @@ Proof. by move=>E; rewrite -E in g2 *; rewrite (proof_irrelevance _ g1 g2). Qed.
 (******************************************************************)
 
 
-(* Allocate a new object with the id x (also serves as its pointer) *)
-(* fnum is the number of its fields  *)
-
-Definition alloc h (x : ptr) (fnum : nat) := 
-   let: fs := ncons fnum null [::]
-   in   x :-> fs \+ h.
-
 (* Auxiliary lemmas *)
 Lemma ncons_elem (T : ordType) n (z e : T) : z \in ncons n e [::] ->  z = e.
 Proof.
@@ -150,13 +143,20 @@ move/H; case; do?[move/eqP=>->].
 by move=>G; constructor 3; rewrite inE; apply/orP; right.
 Qed.
 
+(* Allocate a new object with the id x (also serves as its pointer) *)
+(* fnum is the number of its fields  *)
+
+Definition alloc h (x : ptr) (fnum : nat) := 
+   let: fs := ncons fnum null [::]
+   in   x :-> fs \+ h.
 
 (* Now we prove that the allocation of a fresh pointer preserves *)
 (* graph-ness. *)
 Lemma allocG h (g : graph h) x fnum : 
-  x != null -> x \notin dom h -> graph (alloc h x fnum).
+  (x != null) && (x \notin dom h) -> 
+  graph (alloc h x fnum).
 Proof.
-move=> N Ni; rewrite /alloc; split=>[|y D].
+case/andP=> N Ni; rewrite /alloc; split=>[|y D].
 - by rewrite hvalidPtUn N Ni/=; case: g=>->. 
 case:g=>V /(_ y) H; rewrite hdomPtUn inE in D.
 case/andP: D=>V' /orP; case=>[/eqP Z|D].
@@ -187,7 +187,7 @@ Definition modify h (g: graph h) (x : ptr) (fld : nat) (new : ptr) :=
 (* Modify preserves the graph-ness *)
 Lemma modifyG h (g : graph h) x fld new : 
   let: res := modify g x fld new in
-  (new \in dom h \/ new == null) -> 
+  (new \in dom h) || (new == null) -> 
   graph res.1 /\ (res.2 \in [predU pred1 null & dom h]).
 Proof.
 move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
@@ -214,7 +214,7 @@ case/andP: Dy=>V'/orP; case=>[/eqP Z|Dy].
   move: ((proj2 g) _ Dx)=>[fs][E]G'; rewrite (edgeE E) in G.
   move:(G' z)=>{G'}G'; move/set_nth_elems: G.
   case; first by move=>->; left.
-  + move/eqP=>Z; subst new. case: Dn; last by move=>->; left.
+  + move/eqP=>Z; subst new. case/orP: Dn; last by move=>->; left.
     by move=>D; right; rewrite domF inE; case X: (x == z).
   move/G'; rewrite inE/=inE=>/orP; case; first by left.
   by rewrite domF inE=>->; right; case X: (x == z).

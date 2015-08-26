@@ -1,4 +1,4 @@
-MODULES := pred prelude idynamic ordtype pperm finmap domain pcm unionmap heap spcm coding hgraphs
+MODULES := pred prelude idynamic ordtype pperm finmap domain pcm unionmap heap spcm coding hgraphs logs
 
 RELEASE := $(MODULES:%=%.v) Makefile Makefile.build
 
