@@ -143,8 +143,10 @@ move/H; case; do?[move/eqP=>->].
 by move=>G; constructor 3; rewrite inE; apply/orP; right.
 Qed.
 
-(* Allocate a new object with the id x (also serves as its pointer) *)
-(* fnum is the number of its fields  *)
+(***********************************************************************)
+(* Allocate a new object with the id x (also serves as its pointer)    *)
+(* fnum is the number of its fields                                    *)
+(***********************************************************************)
 
 Definition alloc h (x : ptr) (fnum : nat) := 
    let: fs := ncons fnum null [::]
@@ -172,9 +174,19 @@ rewrite freeUnL; last first.
 by rewrite joinA -[_\+x:->_]joinC -joinA; congr (_ \+ _).
 Qed.
 
+Lemma allocDom h (g : graph h) x fnum : 
+  (x != null) && (x \notin dom h) -> 
+  x :: keys_of h =i keys_of (alloc h x fnum).
+Proof.
+move=>X; move: (allocG g fnum X)=>g'.
+case/andP: X=>N Ni z.
+by rewrite /alloc keys_dom hdomPtUn !inE keys_dom eq_sym; case: g'=>->_/=. 
+Qed.
 
-(* Modify an existing object x's field fld in the heap and return the
-pair (new_heap, old_heap_value) *)
+(***********************************************************************)
+(* Modify an existing object x's field fld in the heap and return the  *)
+(* pair (new_heap, old_heap_value)                                     *) 
+(***********************************************************************)
 
 Definition modify h (g: graph h) (x : ptr) (fld : nat) (new : ptr) := 
   if x \in dom h 
@@ -234,4 +246,15 @@ move=>H Dz; move/H :Dz; rewrite !inE=>/orP; case; first by move=>->.
 move=>Dz; rewrite domF inE; case X: (x == z); apply/orP.
 - by constructor 2.
 by right; rewrite Dz orbC.
+Qed.
+
+Lemma modifyDom h (g : graph h) x fld new : 
+  let: res := modify g x fld new in
+  (new \in dom h) || (new == null) -> 
+  keys_of h =i keys_of res.1.
+Proof.
+move=>X; case: (modifyG g x fld X)=>g' _.
+move: g'; rewrite /modify; do![case: ifP=>//=]=>_ Dx g' z.
+rewrite !keys_dom hdomPtUn !inE (proj1 g')/= domF inE. 
+by case Y: (x == z)=>//; move/eqP: Y=>Y; subst z; rewrite Dx.
 Qed.

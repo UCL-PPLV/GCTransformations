@@ -9,7 +9,7 @@ Unset Printing Implicit Defensive.
 
 
 (* Implementation of the mutator/collector logs and their execution *)
-Section CollectorLog.
+Section GCLog.
 
 Inductive ActionKind : Set := T | M | A of nat.
 
@@ -24,6 +24,8 @@ Definition log := seq LogEntry.
 
 (* A set of pointers *)
 Definition ptr_set := ptrmap_pcm_Encoded unit_st_Encoded.
+
+End GCLog.
 
 Section ExecuteLogs.
 
@@ -74,6 +76,7 @@ Fixpoint executeLog (h : heap) (g : graph h) (l : log) :
   (* Check for modification with new graph certificate *)
   | (Entry M x fld old new) :: ls =>
       condK (@modifyG h g x fld new) (fun pf => executeLog (proj1 pf) ls)
+
   (* Tracing entry - don nothing *)
   | (Entry T _ _ _ _) :: ls => executeLog g ls
   end.
@@ -128,47 +131,19 @@ Theorem goodToExecute h (g: graph h) (l : log) :
 Proof.
 elim: l h g=>[|e ls]G h g; first by eexists.
 case: e=>k x fld old new/=; case: k=>/=[||fnum]; first by case/andP=>_ H; apply: G.
-
 - case/andP=>/andP[H1 H2 H3].
   have X: (new \in dom h) || (new == null) by rewrite !inE/= orbC keys_dom in H2.
   case: (condKE (modifyG g x fld (new:=new)) 
         (fun pf => executeLog (proj1 pf) ls) X)=>/=[[g' H4]]=>->; apply: G.
-  suff S: keys_of h =i keys_of (modify g x fld new).1.
+  have S: keys_of h =i keys_of (modify g x fld new).1 by apply: modifyDom.
   by rewrite -(goodEqSub ls S).
-
-(* TODO: Use H3 and prove the equality of domains: 
-
-   keys_of h =i keys_of (modify g x fld new).1 *)
-  admit.  
-
 case/andP=>/andP[H1]H2 H3.
 have X: (x != null) && (x \notin dom h) by rewrite -keys_dom H1 H2.
 case: (condKE (allocG g fnum) (fun pf => executeLog pf ls) X)=>/=[g']->.
-apply: G; 
-suff S: x :: keys_of h =i keys_of (alloc h x fnum) by rewrite -(goodEqSub ls S).
-
-(* TODO: Use H3 and prove another equality:
-   x :: keys_of h =i keys_of (alloc h x fnum)  *)
-
-
-
-
-
-
-
-
-
-(* TODO:
-
-- Define a "good" logs wrt. initial g-heap and a set of objects
-  (recursively) [DONE].
-
-- Prove a lemma, stating that executing a good log leads to the graph
-  [IN PROGRESS].
-
-- Implement the basic expose (apex) function
-
-*)
+apply: G.
+have S: x :: keys_of h =i keys_of (alloc h x fnum) by apply: allocDom.
+by rewrite -(goodEqSub ls S).
+Qed.
 
 End ExecuteLogs.
 
