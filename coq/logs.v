@@ -13,6 +13,25 @@ Section GCLog.
 
 Inductive ActionKind : Set := T | M | A of nat.
 
+Definition eq_kind k1 k2 := match (k1, k2) with
+  | (T, T) => true
+  | (M, M) => true
+  | (A x, A y) => x == y
+  | _ => false
+  end.
+
+Lemma eqkP : Equality.axiom eq_kind.
+Proof.
+do [case]; do?[constructor]=>//; do ?[by case; constructor].
+move=>n; case; do?[constructor]=>//; rewrite /eq_kind.
+move=>m; case X: (n == m).
+by move/eqP: X=>X; subst m; constructor.
+by constructor; case=>Z; subst m; move/eqP: X. 
+Qed.
+
+Canonical kind_eqMixin := EqMixin eqkP.
+Canonical kind_eqType := Eval hnf in EqType ActionKind kind_eqMixin.
+
 Record LogEntry : Set := Entry {
   kind    : ActionKind;
   source  : ptr;
@@ -146,6 +165,13 @@ by rewrite -(goodEqSub ls S).
 Qed.
 
 End ExecuteLogs.
+
+Section Wavefronts.
+
+Definition wavefront (p : log) := 
+  [seq (source pi, fld pi) | pi <- p & kind pi == T].
+
+End Wavefronts.
 
 
 
