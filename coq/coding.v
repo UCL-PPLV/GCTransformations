@@ -504,7 +504,7 @@ Lemma spcm_pcm_pf (V : encoded_spcm) :
         @encode pcmCode (spcm_to_pcm (decode V)) = V.
 Proof.
 case: V=>V [d E /=] s; rewrite /decode /= -{}E /encode.
-elim: d=>[||d|d|/= s1 -> s2 ->];
+elim: d=>[||d|d|/= s1 -> s2 ->]; 
 by congr PCM.pack; congr PCM.Mixin; try apply: proof_irrelevance.
 Qed.
 

@@ -191,10 +191,9 @@ Qed.
 Definition modify h (g: graph h) (x : ptr) (fld : nat) (new : ptr) := 
   if x \in dom h 
   then let: fs := contents g x
-       in   if size fs <= fld then (h, null)
-            else let: h' := x :-> set_nth null fs fld new \+ free x h
-                 in   (h', nth null fs fld)  
-  else (h, null).
+       in   if size fs <= fld then h
+            else x :-> set_nth null fs fld new \+ free x h
+  else h.
 
 (* Modify preserves the graph-ness *)
 (*
@@ -212,15 +211,15 @@ Lemma modifyG h (g : graph h) x fld old new :
     (x \in dom h) && 
     ((new \in dom h) || (new == null)) &&
     (old \in [predU pred1 null & dom h]) ->  
-  graph res.1 /\ (res.2 \in [predU pred1 null & dom h]).
+  graph res.
 Proof.
 move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
-split; last first. 
-- case: edgeP; last by rewrite Dx.
-  move=>xs _ _ _ H.
-  case X: (fld < size xs); first by apply: (H _ (mem_nth _ X)).
-  + move/negbT: X=>X; rewrite -ltnNge /= in X.
-  by rewrite (nth_default null X) inE/=.
+(* split; last first.  *)
+(* - case: edgeP; last by rewrite Dx. *)
+(*   move=>xs _ _ _ H. *)
+(*   case X: (fld < size xs); first by apply: (H _ (mem_nth _ X)). *)
+(*   + move/negbT: X=>X; rewrite -ltnNge /= in X. *)
+(*   by rewrite (nth_default null X) inE/=. *)
 split=>[|y].
 - move: ((proj2 g) x Dx)=>[fs][E _]; rewrite !hvalidPtUn.
   move: (proj1 g)=>V; rewrite E hfreePtUn; last by rewrite E in V.
@@ -266,11 +265,11 @@ Lemma modifyDom h (g : graph h) x fld old new :
   (x \in dom h) && 
   ((new \in dom h) || (new == null)) &&
   (old \in [predU pred1 null & dom h]) ->
-  keys_of h =i keys_of res.1.
+  keys_of h =i keys_of res.
 Proof.
 move=>X; case: (@modifyG h g x fld old new X)=>g' _.
 move: g'; rewrite /modify; do![case: ifP=>//=]=>_ Dx g' z.
-rewrite !keys_dom hdomPtUn !inE (proj1 g')/= domF inE. 
+rewrite !keys_dom hdomPtUn !inE g'/= domF inE. 
 by case Y: (x == z)=>//; move/eqP: Y=>Y; subst z; rewrite Dx.
 Qed.
 
