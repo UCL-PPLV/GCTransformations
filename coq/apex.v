@@ -60,7 +60,15 @@ previoiusly. For the last, we check whether this object-field pair (o,
 f) has been traced, i.e., whether it belongs to the wavefront,
 preceding the actual entry being examined. 
 
-So, what the correctness statement should look like?
+So, what the correctness statement should look like? Presumably,
+something as follows:
+
+1. First, we define all reachable objects at the moments tracing was
+done (we now have a certified function for this). We take a union of
+all these reachable objects in the graph.
+
+2. TODO
+
 
 *)
 
