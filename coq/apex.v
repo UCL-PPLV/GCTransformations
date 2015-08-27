@@ -13,9 +13,10 @@ Section ApexAlgo.
 Variables (h0 : heap) (g0: graph h0).
 
 (* A good log p wrt. initial heap h0 *)
-Variables (p : log) (pf: goodLog (keys_of h0) p) (upf : uniq p).
+Variable  (p : log). 
+Variables (pf: goodLog (keys_of h0) p) (upf : uniq p).
 
-(* Final heap and graph *)
+(* Final heap and graph with the corresponding certificate epf *)
 Variables (h : heap) (g: graph h).
 Variable (epf : executeLog g0 p = Some (ExRes g)).
 
@@ -27,8 +28,7 @@ Notation "o '#' f" := (nth null (fields g o) f)
 (*    Apex procedure for exposing reachable objects in the graph  *)
 (******************************************************************)
 
-Eval compute in let lst := [:: 1; 2; 3] in take (index 1 lst) lst.
-
+(* Eval compute in let lst := [:: 1; 2; 3] in take (index 1 lst) lst. *)
 
 (* 
 
@@ -38,16 +38,20 @@ is unambiguously defined for each entry in the log, and is computed by
 an entry itself, not a specific index.
 *)
 
-Definition expose_apex := 
+Definition expose_apex : seq ptr := 
   [seq let o := (source pi) in
        let f := (fld pi)    in 
        o#f | pi <- p &
+             let k     := (kind pi)             in   
              let o     := (source pi)           in
              let f     := (fld pi)              in   
-             let k     := (kind pi)             in   
              let prepi := (take (index pi p) p) in
              (kindMA k) && ((o, f) \in wavefront prepi)].
 
+(* Now, we have to show that only reachable objects are exposed by the
+'expose_apex' procedure... *)
 
 
 End ApexAlgo.
+
+
