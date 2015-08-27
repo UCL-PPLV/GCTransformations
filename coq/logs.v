@@ -89,9 +89,10 @@ Definition condK P R (c : bool)
    else fun _ => None) (erefl _). 
 
 Lemma condKE P R (c : bool) (g : is_true c -> P) (f : P -> option R) :
-  c -> exists pf, condK g f = f pf.
+  c -> {pf | condK g f = f pf}.
 Proof.
-rewrite /condK=>X; by suff Z: c = true by subst c; eexists.
+rewrite /condK=>X. 
+by suff Z: c = true=>//; subst c; apply: exist.
 Qed.
 
 Lemma condK_true P R (c : bool) (g : is_true c -> P) (f : P -> option R) z :
@@ -224,12 +225,6 @@ successful execution of a log:
 Lemma takeSn A n (a : A) l : take n.+1 (a :: l) = a :: (take n  l).
 Proof. by []. Qed.
 
-(* Lemma replayLog' h0 (g0: graph h0) l: *)
-(*   (exists h g, executeLog g0 l = Some (@ExRes h g)) -> *)
-(*   forall n, size l <= n ->  *)
-(*   (exists h g, executeLog g0 (take n l) = Some (@ExRes h g)). *)
-(* Proof. by move=>H n /take_oversize=>->. Qed. *)
-
 (* We can combing good logs transitively *)
 Lemma replayLogCons h0 (g0: graph h0) x l h1 g1 h g:
     executeLog g0 [:: x] = Some {| hp := h1; gp := g1 |}
@@ -255,32 +250,30 @@ by rewrite -(proof_irrelevance g1 g') H1.
 Qed.
 
 (* We can reconstruct the intermediate graph for the cons *)
-Lemma replayLogCons2 h0 (g0: graph h0) x l h g : 
-  executeLog g0 (x :: l) = Some {| hp := h; gp := g |} ->
-  exists h1 (g1 : graph h1),
-    executeLog g0 [:: x] = Some {| hp := h1; gp := g1 |}  /\
-    exists (h2 : heap) (g2: graph h2),
-      executeLog g1 l = Some {| hp := h2; gp := g2 |}.
+Lemma replayLogCons2 h0 (g0: graph h0) x l er : 
+  executeLog g0 (x :: l) = Some er ->
+  {er | let: (er1, er2) := er in 
+        executeLog g0 [:: x] = Some er1 /\ 
+        executeLog (gp er1) l = Some er2 }.
 Proof.
-case: x=>k s f o nw; case: k=>[||n];
+case:er=>h g; case: x=>k s f o nw; case: k=>[||n];
 move=>/=E; move:(condK_true E)=> C.
-- exists h0 ,g0; split=>//=. 
+- apply: (exist _ (ExRes g0, ExRes g)); split=>//=.
   + by case: (condKE (traceG (new:=nw)) 
         (fun _ : trace g0 s f = h0 => Some {| hp := h0; gp := g0 |}) C). 
-  case: (condKE (traceG (new:=nw)) 
-        (fun _ : trace g0 s f = h0 => executeLog g0 l) C)=>_<-.
-  by exists h, g.
+  by case: (condKE (traceG (new:=nw)) 
+           (fun _ : trace g0 s f = h0 => executeLog g0 l) C)=>_<-. 
 - case: (condKE (modifyG g0 f (new:=nw)) 
         (fun g' : _ => Some {| hp := modify g0 s f nw; gp := g' |}) C)=>g1 E2.
-  exists _, g1; split=>//=.
+  apply: (exist _ (ExRes g1, ExRes g)); split=>//=.
   case: (condKE (modifyG g0 f (new:=nw)) 
         ((executeLog (h:=modify g0 s f nw))^~ l) C)=>g2 E3.
-  by move: (proof_irrelevance g1 g2)=>Z; subst g2; rewrite -E3; exists h, g.
+  by move: (proof_irrelevance g1 g2)=>Z; subst g2; rewrite -E3.
 case: (condKE (allocG g0 n)
        (fun g' : _ => Some {| hp := alloc h0 s n; gp := g' |}) C)=>g1 E2.
-exists _, g1; split=>//.
+apply: (exist _ (ExRes g1, ExRes g)); split=>//=.
 case: (condKE (allocG g0 n) ((executeLog (h:=alloc h0 s n))^~ l) C)=>g2 E3.
-by move: (proof_irrelevance g1 g2)=>Z; subst g2; rewrite -E3; exists h, g.
+by move: (proof_irrelevance g1 g2)=>Z; subst g2; rewrite -E3.
 Qed.
 
 (* [REM] All this business with inversion on the results should be
@@ -288,56 +281,70 @@ automated somehow. What is the general pattern? *)
 
 
 Lemma replayLogRcons h0 (g0: graph h0) l e:
-  (exists h g, executeLog g0 (rcons l e) = Some (@ExRes h g)) ->
-  exists h g, executeLog g0 l = Some (@ExRes h g).
+  {er | executeLog g0 (rcons l e) = Some er} ->
+  {er | executeLog g0 l = Some er}.
 Proof.
 elim: l e h0 g0=>[e h0 g0|x l Hi e h0 g0 H]; last first.
 - rewrite rcons_cons in H.
-  case: H=>h[g]/replayLogCons2 [h1][g1][H1]/Hi H2.
-  by case:H2=>h'[g']=>/(replayLogCons H1)=>H2; exists h', g'. 
+  case: H=>er /replayLogCons2[[er1 er2]][H1]H2.
+  have X: {er : ExecuteResult | executeLog (gp er1) (rcons l e) = Some er}.
+  - by apply: (exist _ er2).
+  move: (Hi e _ (gp er1) X)=>{X}[]=>er3 H3.
+  case: er1 H1 H2 H3=>h1 g1 H1; case: er3=>h2 g2 H2 H3; simpl in H2, H3.
+  by move: (replayLogCons H1 H3)=>H4; apply: (exist _ (ExRes g2)). 
 
 (* Base case is the interesting one *)
-case=>h[g] /=; case: e=>k s f o nw; case: k=>[||n];
+case=>[[h g]]/=; case: e=>k s f o nw; case: k=>[||n];
 move=>E; move:(condK_true E)=> C.
 - case: (condKE (traceG (new:=nw)) 
         (fun _ : trace g0 s f = h0 => Some {| hp := h0; gp := g0 |}) C)=>? E2.
-  by rewrite E2 in E; exists h, g.
+  by rewrite E2 in E; apply: (exist _ (ExRes g)).
 - case: (condKE (modifyG g0 f (new:=nw)) 
         (fun pf => Some {| hp := _; gp := pf |}) C)=>[pg E2].
-  by rewrite E2 in E; do! eexists.
+  by rewrite E2 in E; apply: (exist _ (ExRes g0)). 
 case: (condKE (allocG g0 n) (fun g'=> Some {| hp := _; gp := g' |}) C)=>g' E2. 
-by rewrite E2 in E; do! eexists.
+by rewrite E2 in E; apply: (exist _ (ExRes g0)). 
 Qed.
 
 Lemma replayLogCat h0 (g0: graph h0) l1 l2 h g:
   executeLog g0 (l1 ++ l2) = Some (@ExRes h g) ->
-  exists h g, executeLog g0 l1 = Some (@ExRes h g).
+  {er | executeLog g0 l1 = Some er}.
 Proof.
 elim/last_ind: l2 h g=>[h g|l2 e Hi h g H].
-- by rewrite cats0; exists h, g.
+- by rewrite cats0; apply: (exist _ (ExRes g)).
 rewrite -rcons_cat in H.
-have X: (exists h g, executeLog g0 (rcons (l1 ++ l2) e) = Some {| hp := h; gp := g |}).
-- by exists h, g.
-by case/replayLogRcons: X=>h1[g1]/Hi.
+have X: {er | executeLog g0 (rcons (l1 ++ l2) e) = Some er}.
+- by apply: (exist _ (ExRes g)).
+by case/replayLogRcons: X=>[[h1 g1]]/Hi.
 Qed.
 
 (*******************************************************************************)
-(* [Replaying logs]: the following lemma is very important, as it
-states that if a log (l) managed to deliver a graph successfully, we
-can reconstruct heaps and graphs for *all* its intermediate stages,
-expressed as (take n l).  *)
+(* [Replaying logs]: the following certified definition is very
+important, as it states that if a log (l) managed to deliver a graph
+successfully, we can reconstruct heaps and graphs for *all* its
+intermediate stages, expressed as (take n l).  *)
 (*******************************************************************************)
 
-Lemma replayLog h0 (g0: graph h0) l h g:
-  executeLog g0 l = Some (@ExRes h g) ->
-  forall n, exists h g, executeLog g0 (take n l) = Some (@ExRes h g).
+Lemma replayLogLm h0 (g0: graph h0) l er:
+  executeLog g0 l = Some er ->
+  forall n, {er | executeLog g0 (take n l) = Some er}.
 Proof.
 move=>H n; case Y : (n < size l); last first.
 - rewrite ltnNge in Y; move/negbFE: Y=>/take_oversize=>->. 
-  by exists h, g.
+  by apply: (exist _ er).
 rewrite -[l](cat_take_drop n) in H.
-by move/replayLogCat: H.
+by case:er H=>h g /replayLogCat.
 Qed.
+
+(* The following is a certified function extracting an intermediate result *)
+Definition replayLog h0 (g0: graph h0) l er
+    (pf : executeLog g0 l = Some er) (n : nat) : ExecuteResult := 
+  match replayLogLm pf n with exist er _ => er end.
+
+Theorem replayLogReplays h0 (g0: graph h0) l er
+    (pf : executeLog g0 l = Some er) (n : nat) :
+  executeLog g0 (take n l) = Some (replayLog pf n). 
+Proof. by rewrite /replayLog; case: (replayLogLm pf n). Qed.
 
 End ExecuteLogs.
 
