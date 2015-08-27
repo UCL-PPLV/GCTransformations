@@ -276,7 +276,7 @@ Qed.
 
 Definition trace h (g: graph h) (x : ptr) (fld : nat) := 
   if x \in dom h 
-  then let: fs := contents g x
+  then let: fs := fields g x
        in   if size fs <= fld then h
             else h
   else h.
@@ -285,8 +285,9 @@ Definition trace h (g: graph h) (x : ptr) (fld : nat) :=
 Lemma traceG h (g : graph h) x fld old new : 
   let: res := trace g x fld in
   (* The are not "safety", but rather "sanity" requirements *)
-  (x \in dom h) && (old == new) && (old \in [predU pred1 null & dom h]) -> 
-  h = res.
+  (x \in dom h) && (old == new) && 
+  (old \in [predU pred1 null & dom h]) -> 
+  res = h.
 Proof.
 by move=>Dn; rewrite /trace; case: ifP=>Dx//=; case: ifP=>_//=.
 Qed.
@@ -339,8 +340,12 @@ forgotten some of the conditions in the definition "goodLog", we
 wouldn't able to prove the theorem. And these conditions ensure that
 the log is adequate wrt. the heap evolution.
 
-A particularly peculiar case is the tracing transition [TODO: explain
-why---it enforces many things but doesn't need them in fact, but
-otherwise we couldn't execute it! Isn't it cool?].
+A particularly peculiar case is the tracing transition. The transition
+by itself doesn't change the graph topology: it merely examines its
+contents. However, as it's being reflected in the GC log, its
+view-lemma "traceG" ensures that the old and the new elements are the
+same. In some sense, this lemma serves as a "rich specification" for
+the actual procedure.  It also enforces some sanity conditions, which
+are to be enforced when executing the appropriate log entry.
 
 *)

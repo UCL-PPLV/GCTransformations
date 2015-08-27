@@ -32,12 +32,38 @@ Qed.
 Canonical kind_eqMixin := EqMixin eqkP.
 Canonical kind_eqType := Eval hnf in EqType ActionKind kind_eqMixin.
 
+Definition kindMA k := match k with
+  | M   => true
+  | A _ => true
+  | _   => false
+  end.
+
 Record LogEntry : Set := Entry {
   kind    : ActionKind;
   source  : ptr;
   fld     : nat;
   old     : ptr;
   new     : ptr }.
+
+Definition eq_entry e1 e2 :=
+  [&& (kind e1 == kind e2), (source e1 == source e2),
+      (fld e1 == fld e2)  , (old e1 == old e2) & (new e1 == new e2)].
+
+(* Well, this is super-boring. Can it be automated a la Haskell? *)
+Lemma eqeP: Equality.axiom eq_entry.
+Proof.
+move=>e1 e2; rewrite /eq_entry.
+case: e1; case: e2=>//==> k1 s1 f1 o1 n1 k2 s2 f2 o2 n2.
+case X:(k2 == k1)=>/=; last by constructor; move/eqP:X=>X H; apply: X; case: H.
+case Y:(s2 == s1)=>/=; last by constructor; move/eqP:Y=>Y H; apply: Y; case: H.
+case Z:(f2 == f1)=>/=; last by constructor; move/eqP:Z=>Z H; apply: Z; case: H.
+case U:(o2 == o1)=>/=; last by constructor; move/eqP:U=>U H; apply: U; case: H.
+case V:(n2 == n1)=>/=; last by constructor; move/eqP:V=>V H; apply: V; case: H.
+by constructor; move: X Y Z U V; do![move/eqP=>->].
+Qed.
+
+Canonical entry_eqMixin := EqMixin eqeP.
+Canonical entry_eqType := Eval hnf in EqType LogEntry entry_eqMixin.
 
 Definition log := seq LogEntry.
 
