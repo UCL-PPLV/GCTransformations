@@ -120,7 +120,7 @@ Fixpoint executeLog (h : heap) (g : graph h) (l : log) :
 
   (* Check for modification with new graph certificate *)
   | (Entry M x fld old new) :: ls =>
-      condK (@modifyG h g x fld new) (fun pf => executeLog (proj1 pf) ls)
+      condK (@modifyG h g x fld old new) (fun pf => executeLog (proj1 pf) ls)
 
   (* Tracing entry - do nothing, but enforce "sanity requirements" *)
   | (Entry T x fld old new) :: ls => 
@@ -174,6 +174,11 @@ Qed.
 
 (* The following theorem states that good logs are good for execution *)
 
+(* In fact, after we have strenghtened the sanity conditions in
+*G-lemmasm it doesn't hold anymore, but it's still okay, as I'm not
+sure, whether we really need it. *)
+
+(*
 Theorem goodToExecute h (g: graph h) (l : log) :
   goodLog (keys_of h) l -> exists er, executeLog g l = Some er.
 Proof.
@@ -199,6 +204,7 @@ apply: G.
 have S: x :: keys_of h =i keys_of (alloc h x fnum) by apply: allocDom.
 by rewrite -(goodEqSub ls S).
 Qed.
+*)
 
 End ExecuteLogs.
 

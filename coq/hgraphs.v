@@ -207,9 +207,11 @@ funciton defined below.
 
 *)
 
-Lemma modifyG h (g : graph h) x fld new : 
+Lemma modifyG h (g : graph h) x fld old new : 
   let: res := modify g x fld new in
-    (x \in dom h) && ((new \in dom h) || (new == null)) ->  
+    (x \in dom h) && 
+    ((new \in dom h) || (new == null)) &&
+    (old \in [predU pred1 null & dom h]) ->  
   graph res.1 /\ (res.2 \in [predU pred1 null & dom h]).
 Proof.
 move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
@@ -237,7 +239,7 @@ case/andP: Dy=>V'/orP; case=>[/eqP Z|Dy].
   move:(G' z)=>{G'}G'; move/set_nth_elems: G.
   case; first by move=>->; left.
   + move/eqP=>Z; subst new. 
-    case/andP: Dn=> _; case/orP; last by move=>->; left.
+    case/andP: Dn; case/andP=> _; case/orP; last by move=>->; left.
     by move=>D; right; rewrite domF inE; case X: (x == z).
   move/G'; rewrite inE/=inE=>/orP; case; first by left.
   by rewrite domF inE=>->; right; case X: (x == z).
@@ -259,12 +261,14 @@ move=>Dz; rewrite domF inE; case X: (x == z); apply/orP.
 by right; rewrite Dz orbC.
 Qed.
 
-Lemma modifyDom h (g : graph h) x fld new : 
+Lemma modifyDom h (g : graph h) x fld old new : 
   let: res := modify g x fld new in
-  (x \in dom h) && ((new \in dom h) || (new == null)) ->  
+  (x \in dom h) && 
+  ((new \in dom h) || (new == null)) &&
+  (old \in [predU pred1 null & dom h]) ->
   keys_of h =i keys_of res.1.
 Proof.
-move=>X; case: (@modifyG h g x fld new X)=>g' _.
+move=>X; case: (@modifyG h g x fld old new X)=>g' _.
 move: g'; rewrite /modify; do![case: ifP=>//=]=>_ Dx g' z.
 rewrite !keys_dom hdomPtUn !inE (proj1 g')/= domF inE. 
 by case Y: (x == z)=>//; move/eqP: Y=>Y; subst z; rewrite Dx.
@@ -286,7 +290,7 @@ Lemma traceG h (g : graph h) x fld old new :
   let: res := trace g x fld in
   (* The are not "safety", but rather "sanity" requirements *)
   (x \in dom h) && (old == new) && 
-  (old \in [predU pred1 null & dom h]) -> 
+  (old == nth null (fields g x) fld) -> 
   res = h.
 Proof.
 by move=>Dn; rewrite /trace; case: ifP=>Dx//=; case: ifP=>_//=.

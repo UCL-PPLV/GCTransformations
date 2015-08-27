@@ -12,11 +12,10 @@ Section ApexAlgo.
 (* Initial graph an heap *)
 Variables (h0 : heap) (g0: graph h0).
 
-(* A good log p wrt. initial heap h0 *)
-Variable  (p : log). 
-Variables (pf: goodLog (keys_of h0) p) (upf : uniq p).
+(* A collector log p will all unique entires *)
+Variables  (p : log) (upf : uniq p).
 
-(* Final heap and graph with the corresponding certificate epf *)
+(* Final heap and graph for the log p with the corresponding certificate epf *)
 Variables (h : heap) (g: graph h).
 Variable (epf : executeLog g0 p = Some (ExRes g)).
 
@@ -50,6 +49,21 @@ Definition expose_apex : seq ptr :=
 
 (* Now, we have to show that only reachable objects are exposed by the
 'expose_apex' procedure... *)
+
+(*
+
+The intuition is as follows: 'expose_apex' rescans the log prefix, and
+for each object entry in it (pi) checks, whether it's allocation or
+modification (kindMA k), and furthermore, it can affect any of the
+knowledge that has been already traced by the collector
+previoiusly. For the last, we check whether this object-field pair (o,
+f) has been traced, i.e., whether it belongs to the wavefront,
+preceding the actual entry being examined. 
+
+So, what the correctness statement should look like?
+
+*)
+
 
 
 End ApexAlgo.
