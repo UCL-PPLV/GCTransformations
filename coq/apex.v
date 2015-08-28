@@ -72,8 +72,11 @@ in T-entries.
 *)
 
 (* Collect all traced objects from the log *)
-Definition tracedObjects : seq ptr :=
-  [seq (old pi) | pi <- p & (kind pi) == T]. 
+Definition tracedObjects3 : seq (ptr * nat * ptr) :=
+  [seq (source pi, fld pi, old pi) | pi <- p & (kind pi) == T]. 
+
+Definition tracedObjFields : seq (ptr * nat) := unzip1 tracedObjects3.
+Definition tracedTargets : seq ptr := unzip2 tracedObjects3.
 
 (* 
 
@@ -90,14 +93,28 @@ T1 an T2 combined give us that tracked objects form a subset of the
 final heap h.
 
 
-[2] Next, ...
+[2] Next, we define the set of actual objects in the final heap-graph
+    with respect to traced objects.
 
 *)
 
+Definition actualTargets : seq ptr := 
+  [seq (pf.1)#(pf.2) | pf <- tracedObjFields].
 
+(*
 
+[3] Finally, the following theorem states the soundness of the
+    expose_apex procedure: it adds to the tracedTargets a set of
+    pointers, such that the union of the two contains the actual
+    targets by the end of the log execution.
 
+*)
 
+Theorem expose_apex_sound : 
+  {subset actualTargets <= tracedTargets ++ expose_apex}.
+Proof.
+admit.
+Admitted.
 
 End ApexAlgo.
 
