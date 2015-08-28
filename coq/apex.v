@@ -63,14 +63,38 @@ preceding the actual entry being examined.
 So, what the correctness statement should look like? Presumably,
 something as follows:
 
-1. First, we define all reachable objects at the moments tracing was
-done (we now have a certified function for this). We take a union of
-all these reachable objects in the graph.
+[1] First, we define all reachable objects at the moments tracing was
+    done (we now have a certified function for this).  
 
-2. TODO
-
+Specifically, such objects are those that are pointed to by the fields
+in T-entries. 
 
 *)
+
+(* Collect all traced objects from the log *)
+Definition tracedObjects : seq ptr :=
+  [seq (old pi) | pi <- p & (kind pi) == T]. 
+
+(* 
+
+We need to prove the following facts about traced objects:
+
+T1: If (pi \in p) then (old pi) \in dom h, where h is a heap, obtained
+    by replaying (take (index pi p) p). In other words, the tracked
+    object belong to the heap.
+
+T2: Graph monotonicity: let (hn, gn) = replayLog (take n p), then (dom
+    hn <= dom h) -- the domain of the graph only grows.
+
+T1 an T2 combined give us that tracked objects form a subset of the
+final heap h.
+
+
+[2] Next, ...
+
+*)
+
+
 
 
 
