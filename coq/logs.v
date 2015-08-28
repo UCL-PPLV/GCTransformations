@@ -108,7 +108,7 @@ Qed.
 The following function executeLog is partial and certified:
 
 - If it returns None, then something must have gone wrong, because the
-  log was malformed (TODO: define a check for good logs).
+  log was malformed. 
 
 - If the result is Some (h, g), then h is the resulting heap and g is
   its new graph certificate, which is threaded through the execution.
@@ -124,8 +124,8 @@ Fixpoint executeLog (h : heap) (g : graph h) (l : log) :
   | [::] => Some (ExRes g)
 
   (* Check for allocation with new graph certificate *)
-  | (Entry (A fnum) x _ _ _) :: ls => 
-      condK (@allocG h g x fnum) (fun g' => executeLog g' ls)
+  | (Entry (A fnum) x fld old y) :: ls => 
+      condK (@allocG h g y fnum x fld old y) (fun g' => executeLog g' ls)
 
   (* Check for modification with new graph certificate *)
   | (Entry M x fld old new) :: ls =>
@@ -136,91 +136,6 @@ Fixpoint executeLog (h : heap) (g : graph h) (l : log) :
       condK (@traceG h g x fld old new) (fun _ => executeLog g ls)
   end.
 
-
-(* 
-
-We next define the "good" logs, which lead to consistent
-executions. The definition is recursive and is parametrized by the set
-"obs" of already allocated objects, which also serves as an
-accumulator.
-
- *)
-
-Fixpoint goodLog (obs : seq ptr) (l : log) : bool := match l with 
-  (* Empty log is good *)    
-  | [::] => true
-
-  (* Allocation *)
-  | (Entry (A fnum) x _ _ _) :: ls => 
-      (x != null) && (x \notin obs)      && 
-      goodLog (x :: obs) ls
-      
-  (* Modification *)
-  | (Entry M x fld old new) :: ls =>
-      (x \in obs)                        &&
-      (old \in [predU pred1 null & obs]) &&
-      (new \in [predU pred1 null & obs]) && 
-      goodLog obs ls                                  
-
-  (* Tracing entry *)
-  | (Entry T x fld old new) :: ls => 
-      (x \in obs)                       &&
-      (old  == new) &&
-      (old \in [predU pred1 null & obs]) &&
-      goodLog obs ls
-  end.
-
-Lemma goodEqSub (obs obs' : seq ptr) l :
-  obs =i obs' -> goodLog obs l = goodLog obs' l.
-Proof.
-elim: l obs obs'=>//x ls Hi obs obs' H.
-case: x=>//=k x fld old new; case: k=>/=;
-move: (H old) (H new) (H x)=>H2 H3 H4;
-rewrite ?inE/= -?H2 -?H3 -?H4; do? [by congr (_ && _); apply: Hi].
-move=>_; rewrite H; do![congr (_ && _)].
-by apply: Hi=>z; rewrite !inE -H.
-Qed.
-
-(* The following theorem states that good logs are good for execution *)
-
-(* In fact, after we have strenghtened the sanity conditions in
-*G-lemmasm it doesn't hold anymore, but it's still okay, as I'm not
-sure, whether we really need it. *)
-
-(*
-Theorem goodToExecute h (g: graph h) (l : log) :
-  goodLog (keys_of h) l -> exists er, executeLog g l = Some er.
-Proof.
-elim: l h g=>[|e ls]G h g; first by eexists.
-case: e=>k x fld old new/=; case: k=>/=[||fnum].
-
-- case/andP=>H.
-  have X: (x \in dom h) && (old == new) && (old \in [predU pred1 null & dom h]).
-  by rewrite -?keys_dom !inE -keys_dom in H *. 
-  by case: (condKE (traceG g fld (new:=new)) 
-        (fun _ => executeLog g ls) X)=>/=E=>->; apply: G.
-- case/andP=>/andP; case=>/andP[H0 H1 H2 H3].
-  have X: (x \in dom h) && ((new \in dom h) || (new == null)).
-  + by rewrite !inE/= orbC keys_dom in H2; rewrite -keys_dom H0/=.
-  case: (condKE (modifyG g fld (new:=new)) 
-        (fun pf => executeLog (proj1 pf) ls) X)=>/=[[g' H4]]=>->; apply: G.
-  have S: keys_of h =i keys_of (modify g x fld new).1 by apply: modifyDom.
-  by rewrite -(goodEqSub ls S).
-case/andP=>/andP[H1]H2 H3.
-have X: (x != null) && (x \notin dom h) by rewrite -keys_dom H1 H2.
-case: (condKE (allocG g fnum) (fun pf => executeLog pf ls) X)=>/=[g']->.
-apply: G.
-have S: x :: keys_of h =i keys_of (alloc h x fnum) by apply: allocDom.
-by rewrite -(goodEqSub ls S).
-Qed.
-*)
-
-(*
-
-We will probably need the following lemma, allowing us to "replay" a
-successful execution of a log:
-
-*)
 
 Lemma takeSn A n (a : A) l : take n.+1 (a :: l) = a :: (take n  l).
 Proof. by []. Qed.
@@ -242,12 +157,16 @@ case: x=>k s f o nw; case: k=>/=[||n]; move=>E; move:(condK_true E)=> C H1.
   rewrite E2 in E=>{E2}; case: pg E=>g' pg; case=>Z; subst h1; clear g'.
   case: (condKE (modifyG g0 f (new:=nw)) (fun pf => executeLog pf l) C)=>g'->.
   by rewrite -(proof_irrelevance g1 g') H1.
-case: (condKE (allocG g0 n)
-        (fun pf => Some {| hp := (alloc h0 s n); gp := pf |}) C)=>/=pg E2.
+case: (condKE (allocG g0 n f (new:=nw))
+        (fun pf => Some {| hp := alloc g0 nw n s f; gp := pf |}) C)=>/=pg E2.
 rewrite E2 in E=>{E2}; case: pg E=>g' pg; case=>Z; subst h1; clear g'.
-case: (condKE (allocG g0 n) ((executeLog (h:=alloc h0 s n))^~ l) C)=>g'->.
+case: (condKE (allocG g0 n f (new:=nw)) 
+      ((executeLog (h:=alloc g0 nw n s f))^~ l) C)=>g'->.
 by rewrite -(proof_irrelevance g1 g') H1.
 Qed.
+
+(* By the way, the proofs are remarkably robust: almost nothing had to
+be changed after refactoring of alloc! *)
 
 (* We can reconstruct the intermediate graph for the cons *)
 Lemma replayLogCons2 h0 (g0: graph h0) x l er : 
@@ -269,15 +188,17 @@ move=>/=E; move:(condK_true E)=> C.
   case: (condKE (modifyG g0 f (new:=nw)) 
         ((executeLog (h:=modify g0 s f nw))^~ l) C)=>g2 E3.
   by move: (proof_irrelevance g1 g2)=>Z; subst g2; rewrite -E3.
-case: (condKE (allocG g0 n)
-       (fun g' : _ => Some {| hp := alloc h0 s n; gp := g' |}) C)=>g1 E2.
+case: (condKE (allocG g0 n f (new:=nw))
+       (fun g' : _ => Some {| hp := alloc g0 nw n s f; gp := g' |}) C)=>g1 E2.
 apply: (exist _ (ExRes g1, ExRes g)); split=>//=.
-case: (condKE (allocG g0 n) ((executeLog (h:=alloc h0 s n))^~ l) C)=>g2 E3.
+case: (condKE (allocG g0 n f (new:=nw)) 
+      ((executeLog (h:=alloc g0 nw n s f))^~ l) C)=>g2 E3.
 by move: (proof_irrelevance g1 g2)=>Z; subst g2; rewrite -E3.
 Qed.
 
-(* [REM] All this business with inversion on the results should be
-automated somehow. What is the general pattern? *)
+(* [REM] All this business with inversion on the results via condKE
+and condK_true should be automated somehow. What is the general
+pattern? *)
 
 
 Lemma replayLogRcons h0 (g0: graph h0) l e:
@@ -302,7 +223,8 @@ move=>E; move:(condK_true E)=> C.
 - case: (condKE (modifyG g0 f (new:=nw)) 
         (fun pf => Some {| hp := _; gp := pf |}) C)=>[pg E2].
   by rewrite E2 in E; apply: (exist _ (ExRes g0)). 
-case: (condKE (allocG g0 n) (fun g'=> Some {| hp := _; gp := g' |}) C)=>g' E2. 
+case: (condKE (allocG g0 n f (new:=nw)) 
+      (fun g'=> Some {| hp := _; gp := g' |}) C)=>g' E2. 
 by rewrite E2 in E; apply: (exist _ (ExRes g0)). 
 Qed.
 
@@ -357,6 +279,97 @@ Definition wavefront (p : log) :=
 End Wavefronts.
 
 
+(*******************************************************************************)
+(*                               Some old junk                                 *)
+(*******************************************************************************)
+
+
+(* 
+
+We next define the "good" logs, which lead to consistent
+executions. The definition is recursive and is parametrized by the set
+"obs" of already allocated objects, which also serves as an
+accumulator.
+
+
+Fixpoint goodLog (obs : seq ptr) (l : log) : bool := match l with 
+  (* Empty log is good *)    
+  | [::] => true
+
+  (* Allocation *)
+  | (Entry (A fnum) x _ _ _) :: ls => 
+      (x != null) && (x \notin obs)      && 
+      goodLog (x :: obs) ls
+      
+  (* Modification *)
+  | (Entry M x fld old new) :: ls =>
+      (x \in obs)                        &&
+      (old \in [predU pred1 null & obs]) &&
+      (new \in [predU pred1 null & obs]) && 
+      goodLog obs ls                                  
+
+  (* Tracing entry *)
+  | (Entry T x fld old new) :: ls => 
+      (x \in obs)                       &&
+      (old  == new) &&
+      (old \in [predU pred1 null & obs]) &&
+      goodLog obs ls
+  end.
+
+Lemma goodEqSub (obs obs' : seq ptr) l :
+  obs =i obs' -> goodLog obs l = goodLog obs' l.
+Proof.
+elim: l obs obs'=>//x ls Hi obs obs' H.
+case: x=>//=k x fld old new; case: k=>/=;
+move: (H old) (H new) (H x)=>H2 H3 H4;
+rewrite ?inE/= -?H2 -?H3 -?H4; do? [by congr (_ && _); apply: Hi].
+move=>_; rewrite H; do![congr (_ && _)].
+by apply: Hi=>z; rewrite !inE -H.
+Qed.
+
+*)
+
+
+(* The following theorem states that good logs are good for execution *)
+
+(* In fact, after we have strenghtened the sanity conditions in
+*G-lemmasm it doesn't hold anymore, but it's still okay, as I'm not
+sure, whether we really need it. *)
+
+(*
+Theorem goodToExecute h (g: graph h) (l : log) :
+  goodLog (keys_of h) l -> exists er, executeLog g l = Some er.
+Proof.
+elim: l h g=>[|e ls]G h g; first by eexists.
+case: e=>k x fld old new/=; case: k=>/=[||fnum].
+
+- case/andP=>H.
+  have X: (x \in dom h) && (old == new) && (old \in [predU pred1 null & dom h]).
+  by rewrite -?keys_dom !inE -keys_dom in H *. 
+  by case: (condKE (traceG g fld (new:=new)) 
+        (fun _ => executeLog g ls) X)=>/=E=>->; apply: G.
+- case/andP=>/andP; case=>/andP[H0 H1 H2 H3].
+  have X: (x \in dom h) && ((new \in dom h) || (new == null)).
+  + by rewrite !inE/= orbC keys_dom in H2; rewrite -keys_dom H0/=.
+  case: (condKE (modifyG g fld (new:=new)) 
+        (fun pf => executeLog (proj1 pf) ls) X)=>/=[[g' H4]]=>->; apply: G.
+  have S: keys_of h =i keys_of (modify g x fld new).1 by apply: modifyDom.
+  by rewrite -(goodEqSub ls S).
+case/andP=>/andP[H1]H2 H3.
+have X: (x != null) && (x \notin dom h) by rewrite -keys_dom H1 H2.
+case: (condKE (allocG g fnum) (fun pf => executeLog pf ls) X)=>/=[g']->.
+apply: G.
+have S: x :: keys_of h =i keys_of (alloc h x fnum) by apply: allocDom.
+by rewrite -(goodEqSub ls S).
+Qed.
+*)
+
+(*
+
+We will probably need the following lemma, allowing us to "replay" a
+successful execution of a log:
+
+*)
 
 
 

@@ -144,46 +144,6 @@ by move=>G; constructor 3; rewrite inE; apply/orP; right.
 Qed.
 
 (***********************************************************************)
-(* Allocate a new object with the id x (also serves as its pointer)    *)
-(* fnum is the number of its fields                                    *)
-(***********************************************************************)
-
-Definition alloc h (x : ptr) (fnum : nat) := 
-   let: fs := ncons fnum null [::]
-   in   x :-> fs \+ h.
-
-(* Now we prove that the allocation of a fresh pointer preserves *)
-(* graph-ness. *)
-Lemma allocG h (g : graph h) x fnum : 
-  (x != null) && (x \notin dom h) -> 
-  graph (alloc h x fnum).
-Proof.
-case/andP=> N Ni; rewrite /alloc; split=>[|y D].
-- by rewrite hvalidPtUn N Ni/=; case: g=>->. 
-case:g=>V /(_ y) H; rewrite hdomPtUn inE in D.
-case/andP: D=>V' /orP; case=>[/eqP Z|D].
-- subst y; exists (ncons fnum null [::]); split.
-  + by rewrite (@hfreePtUn _ _ _ _ V').
-  by move=>z /ncons_elem->.
-move/H: (D)=>[fs]{H}[E H]; exists fs; split; last first.
-- move=>z /(H z); rewrite !inE/= !inE hdomPtUn !inE V'/=.
-  by case/orP=>->//=; apply/or3P; constructor 3.
-rewrite freeUnL; last first.
-- rewrite hdomPt inE N/=; apply/eqP=>G; subst y. 
-  by move/negbTE: Ni; rewrite D.
-by rewrite joinA -[_\+x:->_]joinC -joinA; congr (_ \+ _).
-Qed.
-
-Lemma allocDom h (g : graph h) x fnum : 
-  (x != null) && (x \notin dom h) -> 
-  x :: keys_of h =i keys_of (alloc h x fnum).
-Proof.
-move=>X; move: (allocG g fnum X)=>g'.
-case/andP: X=>N Ni z.
-by rewrite /alloc keys_dom hdomPtUn !inE keys_dom eq_sym; case: g'=>->_/=. 
-Qed.
-
-(***********************************************************************)
 (* Modify an existing object x's field fld in the heap and return the  *)
 (* pair (new_heap, old_heap_value)                                     *) 
 (***********************************************************************)
@@ -214,12 +174,6 @@ Lemma modifyG h (g : graph h) x fld old new :
   graph res.
 Proof.
 move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
-(* split; last first.  *)
-(* - case: edgeP; last by rewrite Dx. *)
-(*   move=>xs _ _ _ H. *)
-(*   case X: (fld < size xs); first by apply: (H _ (mem_nth _ X)). *)
-(*   + move/negbT: X=>X; rewrite -ltnNge /= in X. *)
-(*   by rewrite (nth_default null X) inE/=. *)
 split=>[|y].
 - move: ((proj2 g) x Dx)=>[fs][E _]; rewrite !hvalidPtUn.
   move: (proj1 g)=>V; rewrite E hfreePtUn; last by rewrite E in V.
@@ -271,6 +225,76 @@ move=>X; case: (@modifyG h g x fld old new X)=>g' _.
 move: g'; rewrite /modify; do![case: ifP=>//=]=>_ Dx g' z.
 rewrite !keys_dom hdomPtUn !inE g'/= domF inE. 
 by case Y: (x == z)=>//; move/eqP: Y=>Y; subst z; rewrite Dx.
+Qed.
+
+
+(***********************************************************************)
+(* Allocate a new object with the id x (also serves as its pointer)    *)
+(* fnum is the number of its fields, and assign it to a field of and   *)
+(* existing object in the heap.                                        *)
+(***********************************************************************)
+
+(* First, we define the "pure" allocation, without assignment *)
+Definition pre_alloc h (x : ptr) (fnum : nat) := 
+   if (x != null) && (x \notin dom h) 
+   then let: fs := ncons fnum null [::] in x :-> fs \+ h
+   else h.
+
+(* Now we prove that the pre-allocation of a fresh pointer preserves *)
+(* graph-ness. *)
+Lemma pre_allocG h (g : graph h) x fnum : graph (pre_alloc h x fnum).
+Proof.
+rewrite /pre_alloc; case X: ((x != null) && (x \notin dom h))=>//.
+case/andP: X=> N Ni; rewrite /pre_alloc; split=>[|y D].
+- by rewrite hvalidPtUn N Ni/=; case: g=>->. 
+case:g=>V /(_ y) H; rewrite hdomPtUn inE in D.
+case/andP: D=>V' /orP; case=>[/eqP Z|D].
+- subst y; exists (ncons fnum null [::]); split.
+  + by rewrite (@hfreePtUn _ _ _ _ V').
+  by move=>z /ncons_elem->.
+move/H: (D)=>[fs]{H}[E H]; exists fs; split; last first.
+- move=>z /(H z); rewrite !inE/= !inE hdomPtUn !inE V'/=.
+  by case/orP=>->//=; apply/or3P; constructor 3.
+rewrite freeUnL; last first.
+- rewrite hdomPt inE N/=; apply/eqP=>G; subst y. 
+  by move/negbTE: Ni; rewrite D.
+by rewrite joinA -[_\+x:->_]joinC -joinA; congr (_ \+ _).
+Qed.
+
+(* This lemma is, progrably redundant *)
+Lemma pre_allocDom h (g : graph h) x fnum : 
+  (x != null) && (x \notin dom h) -> 
+  x :: keys_of h =i keys_of (pre_alloc h x fnum).
+Proof.
+move=>X; move: (pre_allocG g x fnum)=>g'.
+case/andP: X g'=>N Ni.
+rewrite /pre_alloc N Ni/==>g' z; rewrite !inE keys_dom eq_sym.
+by rewrite keys_dom hdomPtUn inE (proj1 g')/=.
+Qed.
+
+(* Now, the full-blown allocation and assignment. *)
+
+Definition alloc h (g: graph h) y fnum x fld := 
+  modify (pre_allocG g y fnum) x fld y.
+
+Lemma allocG h (g: graph h) y fnum x fld old new :            
+  let: res := alloc g y fnum x fld in
+  (y != null) && (y \notin dom h) &&
+  (x \in dom h) && (new == y) &&
+  (old \in [predU pred1 null & dom h]) ->  
+  graph res.
+Proof.
+move=>pf.
+case/andP:(pf)=>/andP[]/andP[]=> pf2 pf3 pf4 pf5.
+suff X: (x \in dom (pre_alloc h y fnum)) &&
+        ((y \in dom (pre_alloc h y fnum)) || (y == null)) &&
+        (old \in [predU pred1 null & dom (pre_alloc h y fnum)]).
+- by apply: (modifyG (pre_allocG g y fnum) fld X).
+move:(pre_allocG g y fnum); rewrite /pre_alloc pf2/==>g'.
+case:(g')=>V' _.
+rewrite !inE /= !hdomPtUn !V' !inE !eqxx !(andbC _ true)/=.
+apply/andP; split; first by rewrite pf3 orbC.
+by move: pf5; rewrite !inE /==>/orP; case=>->//; rewrite !(orbC _ true).
 Qed.
 
 (***********************************************************************)
