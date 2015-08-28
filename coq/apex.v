@@ -30,44 +30,38 @@ Notation "o '#' f" := (nth null (fields g o) f)
 (* An auxiliary function that generates all prefixes for elements of a
 list l0 *)
 
-(* Fixpoint zip_num (l : log) n :=  *)
-(*   match l with  *)
-(*   | [::]  => [::] *)
-(*   | e::l' => (e, n) :: zip_num l' (n.+1) *)
-(*   end. *)
+Fixpoint zip_num' (l : log) n :=
+  match l with
+  | [::]  => [::]
+  | e::l' => (e, n) :: zip_num' l' (n.+1)
+  end.
 
-(* Lemma zip_num_elems l e n: *)
-(*   (e, n) \in zip_num l (size l - size l) -> *)
-(*   (size l <= size l) ->  *)
-(*   nth e l (size l + n - size l) = e. *)
+(* Lemma zip_num_elems' e n l: forall m, *)
+(*   (e, n) \in zip_num' l (m - size l) -> *)
+(*   (size l <= m) -> m <= n + size l -> *)
+(*   nth e l (n + size l - m) = e. *)
 (* Proof. *)
-(* elim:l {-1 3 4 6 8}l=>//=x xs Hi l D H.  *)
-(* rewrite inE subnSK//= in D. *)
-(* case/orP: D=>/=G.  *)
-(* - case/eqP: G=>Z1 Z2; subst e n=>/=. *)
-(*   rewrite addnBA// -subnDA. *)
-(*   have X: forall m, m - m = 0 by elim.  *)
-(*   by rewrite X.  *)
+(* elim: l=>//=x xs Hi m D H1 H2. *)
+(* case/orP: D. *)
+(* - case/eqP=>G1 G2; subst e n. *)
+(*   suff S: (m - (size xs).+1 + (size xs).+1 - m) = 0. *)
+(*   by rewrite S. *)
+(*   rewrite subnK//; suff X a : a - a = 0 by []; last by elim: a. *)
+(* rewrite subnSK //= =>G.  *)
+(* suff S: n + (size xs).+1 - m = (n + (size xs) - m).+1. *)
+(* rewrite S/=; apply: Hi=>//; first by apply: ltnW.  *)
+(* rewrite -addn1 addnA -[(_ - _).+1]addn1 -!(addnC 1) addnA. *)
+(* rewrite addnBA ?addnA//. *)
+(* by apply: (leq_trans H2); apply: leq_addr. *)
+(* Qed. *)
 
+Definition zip_num l := zip_num' l 0.
 
-(* suff S: (size xs).+1 + n - size l = (size xs + n - size l).+1. *)
-
-(* rewrite S/=; apply:Hi=>//; do?[by apply:ltnW]. *)
-(* rewrite -addn1 -[(_ - _).+1]addn1. *)
-(* rewrite -(addnC 1) addnBA. *)
-(* Search _ (_ + (_ - _)). *)
-(* - rewrite -addn1 !subnDA. in H1. *)
-(*   admit. *)
-
-(* - rewrite -addn1 -(addnC 1) -addnA -addnBA //. *)
-(*   rewrite addnC addn1/=; apply: Hi=>//; first by apply:ltnW. *)
-(*   rewrite -(leq_add2r (size xs)) subnK; last by apply:ltnW. *)
-(*   by rewrite addnC. *)
-
-(* rewrite -addn1 -(leq_add2l (size xs)) addnC in H1. *)
-(* apply: (leq_trans _ H1).  *)
-
-
+(* Lemma zip_num_elems e n l:  *)
+(*   (e, n) \in zip_num l -> nth e l n = e. *)
+(* Proof. *)
+(* set m := size l. *)
+(* move: () *)
 
 Fixpoint prefs_els_rec (l0 l : log) n := 
   match l with 
