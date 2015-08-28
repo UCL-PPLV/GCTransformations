@@ -30,33 +30,42 @@ Notation "o '#' f" := (nth null (fields g o) f)
 (* An auxiliary function that generates all prefixes for elements of a
 list l0 *)
 
-Fixpoint zip_num (l : log) n := 
-  match l with 
-  | [::]  => [::]
-  | e::l' => (e, n) :: zip_num l' (n.+1)
-  end.
+(* Fixpoint zip_num (l : log) n :=  *)
+(*   match l with  *)
+(*   | [::]  => [::] *)
+(*   | e::l' => (e, n) :: zip_num l' (n.+1) *)
+(*   end. *)
+
+(* Lemma zip_num_elems l e n: *)
+(*   (e, n) \in zip_num l (size l - size l) -> *)
+(*   (size l <= size l) ->  *)
+(*   nth e l (size l + n - size l) = e. *)
+(* Proof. *)
+(* elim:l {-1 3 4 6 8}l=>//=x xs Hi l D H.  *)
+(* rewrite inE subnSK//= in D. *)
+(* case/orP: D=>/=G.  *)
+(* - case/eqP: G=>Z1 Z2; subst e n=>/=. *)
+(*   rewrite addnBA// -subnDA. *)
+(*   have X: forall m, m - m = 0 by elim.  *)
+(*   by rewrite X.  *)
 
 
-Lemma zip_num_elems l: forall e n,
-  (e, n) \in zip_num l (size l - size l) ->
-  (size l <= size l) -> 
-  (if n == (size l - size l) then nth e l n == e else true) ->
-  nth e l n = e.
-Proof.
-elim: l {-1 3 4 7}l=>// x xs Hi l e n /=D H1 H2; rewrite !inE /=in D H1 H2.
+(* suff S: (size xs).+1 + n - size l = (size xs + n - size l).+1. *)
 
-(* TODO: What is missing is the knowledge that x::xs is a suffix of l *)
-case/orP:D.
-- by case/eqP=>Z1 Z2; subst n; rewrite eqxx in H2; move/eqP: H2. 
+(* rewrite S/=; apply:Hi=>//; do?[by apply:ltnW]. *)
+(* rewrite -addn1 -[(_ - _).+1]addn1. *)
+(* rewrite -(addnC 1) addnBA. *)
+(* Search _ (_ + (_ - _)). *)
+(* - rewrite -addn1 !subnDA. in H1. *)
+(*   admit. *)
 
-rewrite subnSK// =>G. apply: (Hi _ _ _ G); first by apply: ltnW.
+(* - rewrite -addn1 -(addnC 1) -addnA -addnBA //. *)
+(*   rewrite addnC addn1/=; apply: Hi=>//; first by apply:ltnW. *)
+(*   rewrite -(leq_add2r (size xs)) subnK; last by apply:ltnW. *)
+(*   by rewrite addnC. *)
 
-case: ifP=>// /eqP Z. subst n.
-
-
-
-Admitted.
-
+(* rewrite -addn1 -(leq_add2l (size xs)) addnC in H1. *)
+(* apply: (leq_trans _ H1).  *)
 
 
 
