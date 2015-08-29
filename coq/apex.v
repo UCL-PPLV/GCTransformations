@@ -91,16 +91,37 @@ have X: (pr, e, n) \in (prefs_els_rec l l (size l - size l)).
 by apply: (prefs_take1' X); apply: leqnn.
 Qed.
 
+
+(* Default log entry *)
+Variable e0 : LogEntry.
+
+(* An alternative definition of a log decomposition procedure *)
+Fixpoint prefs_els_rec2 (l : log) n := 
+  if n is n'.+1 then (take n l, nth e0 l n) :: prefs_els_rec2 l n' else [::].
+Definition prefs_els2 l := prefs_els_rec2 l (size l - 1).
+
+Lemma take_nth_drop (n : nat) s:
+  n < size s ->
+  take n s ++ (nth e0 s n) :: drop n.+1 s = s.
+Proof.
+elim: s n => [|x s IHs] [|n]=>//=[_|]; first by rewrite drop0.
+rewrite -[n.+1]addn1 -[(size s).+1]addn1 ltn_add2r=>/IHs=>H.
+by rewrite addn1 -{4}H.
+Qed.
+
+
 Definition expose_apex : seq ptr := 
-  [seq let pi := pei.1.2   in
+  [seq let pi := pe.2     in
        let o  := source pi in
        let f  := fld pi    in 
-       o#f | pei <- prefs_els p &
-             let: (pre, pi, i) := pei         in   
+       o#f | pe <- prefs_els2 p &
+             let: (pre, pi)    := pe          in   
              let k             := (kind pi)   in   
              let o             := (source pi) in
              let f             := (fld pi)    in   
              (kindMA k) && ((o, f) \in wavefront pre)].
+
+Search _ (take _) (nth _).
 
 (* Now, we have to show that only reachable objects are exposed by the
 'expose_apex' procedure... *)
