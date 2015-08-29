@@ -47,9 +47,9 @@ Fixpoint zip_num' (l : log) n :=
 (*   suff S: (m - (size xs).+1 + (size xs).+1 - m) = 0. *)
 (*   by rewrite S. *)
 (*   rewrite subnK//; suff X a : a - a = 0 by []; last by elim: a. *)
-(* rewrite subnSK //= =>G.  *)
+(* rewrite subnSK //= =>G. *)
 (* suff S: n + (size xs).+1 - m = (n + (size xs) - m).+1. *)
-(* rewrite S/=; apply: Hi=>//; first by apply: ltnW.  *)
+(* rewrite S/=; apply: Hi=>//; first by apply: ltnW. *)
 (* rewrite -addn1 addnA -[(_ - _).+1]addn1 -!(addnC 1) addnA. *)
 (* rewrite addnBA ?addnA//. *)
 (* by apply: (leq_trans H2); apply: leq_addr. *)
@@ -76,7 +76,6 @@ Lemma prefs_take1' l: forall pr e n,
   (size l <= size l) -> 
   (pr = take n l).
 Proof.
-rewrite/prefs_els.
 elim/list_ind: l {-2 4 5}l=>// x xs Hi l pr e n/= D H.
 rewrite !inE /=in D; case/orP: D; first by case/eqP=>Z1 Z2 Z3; subst pr e n. 
 by rewrite subnSK// =>G; apply: (Hi _ _ _  _ G); apply: ltnW.
@@ -91,41 +90,6 @@ have X: (pr, e, n) \in (prefs_els_rec l l (size l - size l)).
 - by rewrite N. 
 by apply: (prefs_take1' X); apply: leqnn.
 Qed.
-
-
-(* Lemma prefs_take2' l: forall pr e n, *)
-(*   (pr, e, n) \in (prefs_els_rec l l (size l - size l)) -> *)
-(*   (size l <= size l) -> *)
-(*   (exists s, l = s ++ l) -> *)
-(*   drop n l = e :: (drop n.+1) l. *)
-(* Proof. *)
-(* rewrite/prefs_els. *)
-(* elim: l {-2 4 5 8}l=>//x xs Hi l pr e n/=D H1 H2.  *)
-(* rewrite subnSK// in D. *)
-(* case/orP:D=>//G. *)
-(* case/eqP: G=>Z1 Z2 Z3; subst pr e n. *)
-(* admit. *)
-
-(* drop (size l - size l) l = x :: drop (size l - size l).+1 l *)
-
-(* apply: (Hi _ _ _ _ G);clear G Hi; first by apply: ltnW. *)
-
-
-(* apply:(Hi l pr e n)=>{Hi}=>//; do?[by apply: ltnW]. *)
-
-
-
-(* (* case/orP: D=>//=. *) *)
-(* (* case/eqP=>Z1 Z2 Z3; subst pr e n=>/=. *) *)
-
-
-(* (* (* apply: Hi; last by apply: ltnW. *) *) *)
-(* (* (* rewrite subnSK. *) *) *)
-(* (* (* rewrite !inE /=in D; case/orP: D; first by case/eqP=>Z1 Z2 Z3; subst pr e n.  *) *) *)
-(* (* (* by rewrite subnSK// =>G; apply: (Hi _ _ _  _ G); apply: ltnW. *) *) *)
-
-
-(* Qed. *)
 
 Definition expose_apex : seq ptr := 
   [seq let pi := pei.1.2   in
