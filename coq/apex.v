@@ -36,32 +36,7 @@ Fixpoint zip_num' (l : log) n :=
   | e::l' => (e, n) :: zip_num' l' (n.+1)
   end.
 
-(* Lemma zip_num_elems' e n l: forall m, *)
-(*   (e, n) \in zip_num' l (m - size l) -> *)
-(*   (size l <= m) -> m <= n + size l -> *)
-(*   nth e l (n + size l - m) = e. *)
-(* Proof. *)
-(* elim: l=>//=x xs Hi m D H1 H2. *)
-(* case/orP: D. *)
-(* - case/eqP=>G1 G2; subst e n. *)
-(*   suff S: (m - (size xs).+1 + (size xs).+1 - m) = 0. *)
-(*   by rewrite S. *)
-(*   rewrite subnK//; suff X a : a - a = 0 by []; last by elim: a. *)
-(* rewrite subnSK //= =>G. *)
-(* suff S: n + (size xs).+1 - m = (n + (size xs) - m).+1. *)
-(* rewrite S/=; apply: Hi=>//; first by apply: ltnW. *)
-(* rewrite -addn1 addnA -[(_ - _).+1]addn1 -!(addnC 1) addnA. *)
-(* rewrite addnBA ?addnA//. *)
-(* by apply: (leq_trans H2); apply: leq_addr. *)
-(* Qed. *)
-
 Definition zip_num l := zip_num' l 0.
-
-(* Lemma zip_num_elems e n l:  *)
-(*   (e, n) \in zip_num l -> nth e l n = e. *)
-(* Proof. *)
-(* set m := size l. *)
-(* move: () *)
 
 Fixpoint prefs_els_rec (l0 l : log) n := 
   match l with 
@@ -97,7 +72,7 @@ Variable e0 : LogEntry.
 
 (* An alternative definition of a log decomposition procedure *)
 Fixpoint prefs_els_rec2 (l : log) n := 
-  if n is n'.+1 then (take n l, nth e0 l n) :: prefs_els_rec2 l n' else [::].
+  if n is n'.+1 then (take n l, nth e0 l n, n) :: prefs_els_rec2 l n' else [::].
 Definition prefs_els2 l := prefs_els_rec2 l (size l - 1).
 
 Lemma take_nth_drop (n : nat) s:
@@ -109,13 +84,12 @@ rewrite -[n.+1]addn1 -[(size s).+1]addn1 ltn_add2r=>/IHs=>H.
 by rewrite addn1 -{4}H.
 Qed.
 
-
 Definition expose_apex : seq ptr := 
-  [seq let pi := pe.2     in
+  [seq let pi := pe.1.2    in
        let o  := source pi in
        let f  := fld pi    in 
        o#f | pe <- prefs_els2 p &
-             let: (pre, pi)    := pe          in   
+             let: (pre, pi, _) := pe          in   
              let k             := (kind pi)   in   
              let o             := (source pi) in
              let f             := (fld pi)    in   
