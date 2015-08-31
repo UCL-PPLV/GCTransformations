@@ -84,6 +84,22 @@ rewrite -[n.+1]addn1 -[(size s).+1]addn1 ltn_add2r=>/IHs=>H.
 by rewrite addn1 -{4}H.
 Qed.
 
+Lemma pref_els_a l e : e \in l -> exists pr n, (pr, e, n) \in prefs_els2 l.
+Proof.
+rewrite/prefs_els2.
+set n := size l; have X: size l = n by [].
+move: l n X; elim=>/=[n X|x xs Hi n X H]//.
+rewrite inE in H. 
+admit.
+
+(* case/orP: H. *)
+(* move/eqP=>Z; subst e; rewrite -X -addn1 -addnBA//=.  *)
+(* have Y: forall a, a - a = 0 by elim. *)
+(* rewrite Y addn0. *)
+
+Admitted.
+
+
 Definition expose_apex : seq ptr := 
   [seq let pi := pe.1.2    in
        let o  := source pi in
