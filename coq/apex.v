@@ -71,10 +71,11 @@ Qed.
 Variable e0 : LogEntry.
 
 (* An alternative definition of a log decomposition procedure *)
-Fixpoint prefs_els_rec2 (l : log) n := 
-  if n is n'.+1 then (take n l, nth e0 l n, n) :: prefs_els_rec2 l n' else [::].
-Definition prefs_els2 l := prefs_els_rec2 l (size l - 1).
+Fixpoint prefixes_rec (l : log) n := 
+  if n is n'.+1 then (take n' l, nth e0 l n', n') :: prefixes_rec l n' else [::].
+Definition prefixes l := prefixes_rec l (size l).
 
+(* Some properties of our selector function "prefixes". *)
 Lemma take_nth_drop (n : nat) s:
   n < size s ->
   take n s ++ (nth e0 s n) :: drop n.+1 s = s.
@@ -84,27 +85,34 @@ rewrite -[n.+1]addn1 -[(size s).+1]addn1 ltn_add2r=>/IHs=>H.
 by rewrite addn1 -{4}H.
 Qed.
 
-Lemma pref_els_a l e : e \in l -> exists pr n, (pr, e, n) \in prefs_els2 l.
+Lemma in_prefixes' l e pr i: (pr, e, i) \in prefixes l ->
+  i < size l /\ nth e0 l i = e.
 Proof.
-rewrite/prefs_els2.
-set n := size l; have X: size l = n by [].
-move: l n X; elim=>/=[n X|x xs Hi n X H]//.
-rewrite inE in H. 
+rewrite /prefixes.
+elim: (size l)=>//=n Hi.
+case/orP; last first.
+- by case/Hi=>H1 H2; split=>//; apply: (ltn_trans H1); apply:ltnSn.
+by case/eqP=>Z1 Z2 Z3; subst pr e i.
+Qed.
+
+Lemma in_prefixes l e pr i: (pr, e, i) \in prefixes l -> e \in l.
+Proof.
+case/in_prefixes'=>H1 H2.
+have X: exists2 j, j < size l & nth e0 l j = e by exists i=>//.
+by move/nthP: X.
+Qed.
+
+Lemma prefixes_in l e pr i: e \in l -> (pr, e, i) \in prefixes l.
+Proof.
+move=>D; case/(nthP e0): (D)=>j H1 H2.
 admit.
-
-(* case/orP: H. *)
-(* move/eqP=>Z; subst e; rewrite -X -addn1 -addnBA//=.  *)
-(* have Y: forall a, a - a = 0 by elim. *)
-(* rewrite Y addn0. *)
-
 Admitted.
-
 
 Definition expose_apex : seq ptr := 
   [seq let pi := pe.1.2    in
        let o  := source pi in
        let f  := fld pi    in 
-       o#f | pe <- prefs_els2 p &
+       o#f | pe <- prefixes p &
              let: (pre, pi, _) := pe          in   
              let k             := (kind pi)   in   
              let o             := (source pi) in
