@@ -138,6 +138,28 @@ Proof.
 by move/(@prefixes_num' l n (size l))=>H; apply:H; apply:leqnn.
 Qed.
 
+Lemma prefixes_num_size' l pr e n m : 
+  (pr, e, n) \in prefixes_rec l m -> n < m.
+Proof.
+elim: m=>//=m Hi.
+rewrite inE; case/orP; first by case/eqP=>_ _ ->; apply:ltnSn.
+by move/Hi=>G; apply: (ltn_trans G); apply:ltnSn.
+Qed.
+
+Lemma prefixes_num_size l pr e n : 
+  (pr, e, n) \in prefixes l-> n < size l.
+Proof. by move/prefixes_num_size'. Qed.
+
+Lemma prefV l pr e n:
+  (pr, e, n) \in prefixes l -> 
+  [/\ pr = take n l, 
+      e = (nth e0 l n) & 
+      l = pr ++ e :: drop n.+1 l].
+Proof.
+move=>H; case: (in_prefixes_full H)=>G1 G2 G3.
+by rewrite G3 -G2; split=>//; move: (take_nth_drop G1)=>->.
+Qed.
+
 Definition expose_apex : seq ptr := 
   [seq let pi := pe.1.2    in
        let o  := source pi in
