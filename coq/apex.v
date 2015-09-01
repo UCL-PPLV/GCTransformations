@@ -87,8 +87,8 @@ Qed.
 
 (* Adequacy of prefixes *)
 
-Lemma in_prefixes' l e pr i: (pr, e, i) \in prefixes l ->
-  i < size l /\ nth e0 l i = e.
+Lemma in_prefixes_full l e pr i: (pr, e, i) \in prefixes l ->
+  [/\ i < size l, nth e0 l i = e & pr = take i l].
 Proof.
 rewrite /prefixes.
 elim: (size l)=>//=n Hi.
@@ -99,7 +99,7 @@ Qed.
 
 Lemma in_prefixes l e pr i: (pr, e, i) \in prefixes l -> e \in l.
 Proof.
-case/in_prefixes'=>H1 H2.
+case/in_prefixes_full=>H1 H2.
 have X: exists2 j, j < size l & nth e0 l j = e by exists i=>//.
 by move/nthP: X.
 Qed.
@@ -211,6 +211,8 @@ Definition actualTargets : seq ptr :=
     pointers, such that the union of the two contains the actual
     targets by the end of the log execution.
 
+
+[TODO]: A bunch of lemmas about waterfronts and affected fileds.
 *)
 
 
