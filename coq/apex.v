@@ -85,6 +85,8 @@ rewrite -[n.+1]addn1 -[(size s).+1]addn1 ltn_add2r=>/IHs=>H.
 by rewrite addn1 -{4}H.
 Qed.
 
+(* Adequacy of prefixes *)
+
 Lemma in_prefixes' l e pr i: (pr, e, i) \in prefixes l ->
   i < size l /\ nth e0 l i = e.
 Proof.
@@ -102,11 +104,21 @@ have X: exists2 j, j < size l & nth e0 l j = e by exists i=>//.
 by move/nthP: X.
 Qed.
 
-Lemma prefixes_in l e pr i: e \in l -> (pr, e, i) \in prefixes l.
+Lemma prefixes_in' l e j n : 
+  e \in l -> j < n -> nth e0 l j = e ->
+  (take j l, e, j) \in prefixes_rec l n.
 Proof.
-move=>D; case/(nthP e0): (D)=>j H1 H2.
-admit.
-Admitted.
+elim: n=>//=n Hi H1 H2 H3; case B: (j == n).
+- by move/eqP: B=>B; subst j; rewrite inE H3 eqxx.
+have X: j < n by rewrite ltnS leq_eqVlt B/= in H2.
+by rewrite inE; move:(Hi H1 X H3)=>->; rewrite orbC.
+Qed.
+
+Lemma prefixes_in l e: e \in l -> 
+  exists i, (take i l, e, i) \in prefixes l.
+Proof.
+by move=>D; case/(nthP e0): (D)=>j H1 H2; exists j; apply: prefixes_in'.
+Qed.
 
 Definition expose_apex : seq ptr := 
   [seq let pi := pe.1.2    in
@@ -119,7 +131,6 @@ Definition expose_apex : seq ptr :=
              let f             := (fld pi)    in   
              (kindMA k) && ((o, f) \in wavefront pre)].
 
-Search _ (take _) (nth _).
 
 (* Now, we have to show that only reachable objects are exposed by the
 'expose_apex' procedure... *)
