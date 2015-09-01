@@ -121,15 +121,21 @@ by move=>D; case/(nthP e0): (D)=>j H1 H2; exists j; apply: prefixes_in'.
 Qed.
 
 Lemma prefixes_num' l j n  : 
-  j < n -> n < size l -> exists e, (take j l, e, j) \in prefixes_rec l n.
+  j < n -> n <= size l -> exists e, (take j l, e, j) \in prefixes_rec l n.
 Proof.
 elim: n=>//=n Hi H1 H2; case B: (j == n); last first.
 - have X: j < n by rewrite ltnS leq_eqVlt B/= in H1.
-  have Y: n < size l by apply: (ltn_trans (ltnSn n) H2).
+  have Y: n <= size l by apply:ltnW. 
   by case: (Hi X Y)=>e G; exists e; rewrite inE G orbC.
 move/eqP: B=>B; subst j=>{H1 Hi}.
 exists (nth e0 l n).
 by rewrite inE eqxx.
+Qed.
+
+Lemma prefixes_num l n  : 
+  n < size l -> exists e, (take n l, e, n) \in prefixes l.
+Proof.
+by move/(@prefixes_num' l n (size l))=>H; apply:H; apply:leqnn.
 Qed.
 
 Definition expose_apex : seq ptr := 
