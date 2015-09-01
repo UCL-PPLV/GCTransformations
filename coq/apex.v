@@ -133,7 +133,7 @@ Definition expose_apex : seq ptr :=
 
 
 (* Now, we have to show that only reachable objects are exposed by the
-'expose_apex' procedure... *)
+   'expose_apex' procedure... *)
 
 (*
 
