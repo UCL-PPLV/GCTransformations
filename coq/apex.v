@@ -213,6 +213,7 @@ Definition actualTargets : seq ptr :=
 
 *)
 
+
 Theorem expose_apex_sound : 
   {subset actualTargets <= tracedTargets ++ expose_apex}.
 Proof.
