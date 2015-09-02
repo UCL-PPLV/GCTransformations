@@ -222,12 +222,13 @@ Lemma trace_pure et l1 l2:
   kind et == T -> ~~ has (matchingMA et) l2 -> p = l1 ++ et :: l2 -> 
   source et # fld et = new et.
 Proof.
-(* move=>Kt; elim:l2=>[_|]. *)
-(* rewrite cats1=>Z; subst p. *)
-(* have er: {er : ExecuteResult | executeLog g0 l1 = Some er} *)
-(*   by apply: replayLogRcons; apply: (exist _ _ epf). *)
-(* case:er=>[[h' g']]pf'. *)
+move=>Kt; elim:l2=>[_|e l Hi H].
+- by rewrite cats1=>Z; subst p; case: (replayLogRconsT epf Kt).
+
+admit.
+
 Admitted.
+
 
 (* [TODO] The next step is prove that for any T-entry, its captured
    o.f-value is either in the graph, or there exists an MA-antry *behind*

@@ -278,24 +278,22 @@ Qed.
 
 (* T-entries do not affect the execution *)
 
-Lemma replayLogRconsT h0 (g0 : graph h0) l e h g h' g' :
-  executeLog g0 l = Some {| hp := h'; gp := g' |} ->
+Lemma replayLogRconsT h0 (g0 : graph h0) l e h g :
   executeLog g0 (rcons l e) = Some {| hp := h; gp := g |} ->
   kind e == T ->
-  h = h' /\ nth null (fields g (source e)) (fld e) = (new e).
+  executeLog g0 l = Some {| hp := h; gp := g |} /\ 
+  nth null (fields g (source e)) (fld e) = (new e).
 Proof.
-case: e=>k s f o nw; case: k=>//=H1 H2 _.
+case: e=>k s f o nw; case: k=>//= H2 _.
 move/replayLogRcons: H2=>[h1][g1][H3]/= E.
 move:(condK_true E)=>C.
 case: (condKE (traceG (new:=nw)) 
    (fun _ : trace g1 s f = h1 => Some {| hp := h1; gp := g1 |}) C)=>? E2.
 rewrite E2 in E. 
 case: E=>Z; subst h1.
-case/andP: (C)=>/andP=>[[G]]/eqP Z1 /eqP Z2; subst nw o.
-rewrite H3 in H1; case: H1=>Z; subst h'. 
-by rewrite (proof_irrelevance g g1).
+rewrite (proof_irrelevance g g1).
+by case/andP: (C)=>/andP=>[[G]]/eqP Z1 /eqP Z2; subst nw o. 
 Qed.
-
 
 End ExecuteLogs.
 
