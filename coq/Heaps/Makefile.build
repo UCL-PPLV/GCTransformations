@@ -22,15 +22,13 @@ endef
 VS := $(MODULES:%=%.v)
 COQ_MK := coq_makefile
 
-COQ_MK_FLAGS := $(VS) COQC = "\$$(COQBIN)coqc" COQLIBS = "$(foreach f,$(COQLIBS),$(call print_flag,$f)) -R . \"\" -R Heaps \"\" " COQFLAGS = "-q \$$(OPT) \$$(COQLIBS)"
+COQ_MK_FLAGS := $(VS) COQC = "\$$(COQBIN)coqc" COQLIBS = "$(foreach f,$(COQLIBS),$(call print_flag,$f)) -R . \"\" " COQFLAGS = "-q \$$(OPT) \$$(COQLIBS)"
 
 $(MAKEFILE): Makefile #$(VS)
-	cd ./Heaps/ && make && cd ..     
 	$(COQ_MK) $(COQ_MK_FLAGS) -o $(MAKEFILE)
 	$(call scrub,Makefile.coq)
 
 clean: $(MAKEFILE)
-	cd ./Heaps/ && make clean && cd ..     
 	make -f $(MAKEFILE) clean
 	rm -f $(MAKEFILE)
 

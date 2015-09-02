@@ -1,4 +1,4 @@
-MODULES := hgraphs logs apex
+MODULES := pred prelude idynamic ordtype pperm finmap domain pcm unionmap heap spcm coding
 
 RELEASE := $(MODULES:%=%.v) Makefile Makefile.build
 
