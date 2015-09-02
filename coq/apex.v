@@ -85,8 +85,10 @@ rewrite -[n.+1]addn1 -[(size s).+1]addn1 ltn_add2r=>/IHs=>H.
 by rewrite addn1 -{4}H.
 Qed.
 
-Lemma in_prefixes' l e pr i: (pr, e, i) \in prefixes l ->
-  i < size l /\ nth e0 l i = e.
+(* Adequacy of prefixes *)
+
+Lemma in_prefixes_full l e pr i: (pr, e, i) \in prefixes l ->
+  [/\ i < size l, nth e0 l i = e & pr = take i l].
 Proof.
 rewrite /prefixes.
 elim: (size l)=>//=n Hi.
@@ -97,16 +99,66 @@ Qed.
 
 Lemma in_prefixes l e pr i: (pr, e, i) \in prefixes l -> e \in l.
 Proof.
-case/in_prefixes'=>H1 H2.
+case/in_prefixes_full=>H1 H2.
 have X: exists2 j, j < size l & nth e0 l j = e by exists i=>//.
 by move/nthP: X.
 Qed.
 
-Lemma prefixes_in l e pr i: e \in l -> (pr, e, i) \in prefixes l.
+Lemma prefixes_in' l e j n : 
+  e \in l -> j < n -> nth e0 l j = e ->
+  (take j l, e, j) \in prefixes_rec l n.
 Proof.
-move=>D; case/(nthP e0): (D)=>j H1 H2.
-admit.
-Admitted.
+elim: n=>//=n Hi H1 H2 H3; case B: (j == n).
+- by move/eqP: B=>B; subst j; rewrite inE H3 eqxx.
+have X: j < n by rewrite ltnS leq_eqVlt B/= in H2.
+by rewrite inE; move:(Hi H1 X H3)=>->; rewrite orbC.
+Qed.
+
+Lemma prefixes_in l e: e \in l -> 
+  exists i, (take i l, e, i) \in prefixes l.
+Proof.
+by move=>D; case/(nthP e0): (D)=>j H1 H2; exists j; apply: prefixes_in'.
+Qed.
+
+Lemma prefixes_num' l j n  : 
+  j < n -> n <= size l -> exists e, (take j l, e, j) \in prefixes_rec l n.
+Proof.
+elim: n=>//=n Hi H1 H2; case B: (j == n); last first.
+- have X: j < n by rewrite ltnS leq_eqVlt B/= in H1.
+  have Y: n <= size l by apply:ltnW. 
+  by case: (Hi X Y)=>e G; exists e; rewrite inE G orbC.
+move/eqP: B=>B; subst j=>{H1 Hi}.
+exists (nth e0 l n).
+by rewrite inE eqxx.
+Qed.
+
+Lemma prefixes_num l n  : 
+  n < size l -> exists e, (take n l, e, n) \in prefixes l.
+Proof.
+by move/(@prefixes_num' l n (size l))=>H; apply:H; apply:leqnn.
+Qed.
+
+Lemma prefixes_num_size' l pr e n m : 
+  (pr, e, n) \in prefixes_rec l m -> n < m.
+Proof.
+elim: m=>//=m Hi.
+rewrite inE; case/orP; first by case/eqP=>_ _ ->; apply:ltnSn.
+by move/Hi=>G; apply: (ltn_trans G); apply:ltnSn.
+Qed.
+
+Lemma prefixes_num_size l pr e n : 
+  (pr, e, n) \in prefixes l-> n < size l.
+Proof. by move/prefixes_num_size'. Qed.
+
+Lemma prefV l pr e n:
+  (pr, e, n) \in prefixes l -> 
+  [/\ pr = take n l, 
+      e = (nth e0 l n) & 
+      l = pr ++ e :: drop n.+1 l].
+Proof.
+move=>H; case: (in_prefixes_full H)=>G1 G2 G3.
+by rewrite G3 -G2; split=>//; move: (take_nth_drop G1)=>->.
+Qed.
 
 Definition expose_apex : seq ptr := 
   [seq let pi := pe.1.2    in
@@ -119,10 +171,9 @@ Definition expose_apex : seq ptr :=
              let f             := (fld pi)    in   
              (kindMA k) && ((o, f) \in wavefront pre)].
 
-Search _ (take _) (nth _).
 
 (* Now, we have to show that only reachable objects are exposed by the
-'expose_apex' procedure... *)
+   'expose_apex' procedure... *)
 
 (*
 
@@ -182,7 +233,10 @@ Definition actualTargets : seq ptr :=
     pointers, such that the union of the two contains the actual
     targets by the end of the log execution.
 
+
+[TODO]: A bunch of lemmas about waterfronts and affected fileds.
 *)
+
 
 Theorem expose_apex_sound : 
   {subset actualTargets <= tracedTargets ++ expose_apex}.
