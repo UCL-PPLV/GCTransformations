@@ -228,6 +228,16 @@ case: (condKE (allocG g0 n f (new:=nw))
 by rewrite E2 in E; apply: (exist _ (ExRes g0)). 
 Qed.
 
+(* T-entries do not affect the execution *)
+Lemma replayLogRconsT h0 (g0 : graph h0) l e h g h' g' : 
+  executeLog g0 (rcons l e) = Some {| hp := h; gp := g |} ->
+  executeLog g0 l = Some {| hp := h'; gp := g' |} ->
+  kind e == T ->
+  h = h' /\ nth null (fields g (source e)) (fld e) = (new e).
+Proof.
+Admitted.
+
+
 Lemma replayLogCat h0 (g0: graph h0) l1 l2 h g:
   executeLog g0 (l1 ++ l2) = Some (@ExRes h g) ->
   {er | executeLog g0 l1 = Some er}.

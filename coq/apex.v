@@ -24,7 +24,7 @@ Notation "o '#' f" := (nth null (fields g o) f)
   (at level 43, left associativity).
 
 (******************************************************************)
-(*    Apex procedure for exposing reachable objects in the graph  *)
+(*    Auxiliary functions for log processing and fact about them  *)
 (******************************************************************)
 
 (* An auxiliary function that generates all prefixes for elements of a
@@ -138,18 +138,6 @@ Proof.
 by move/(@prefixes_num' l n (size l))=>H; apply:H; apply:leqnn.
 Qed.
 
-Lemma prefixes_num_size' l pr e n m : 
-  (pr, e, n) \in prefixes_rec l m -> n < m.
-Proof.
-elim: m=>//=m Hi.
-rewrite inE; case/orP; first by case/eqP=>_ _ ->; apply:ltnSn.
-by move/Hi=>G; apply: (ltn_trans G); apply:ltnSn.
-Qed.
-
-Lemma prefixes_num_size l pr e n : 
-  (pr, e, n) \in prefixes l-> n < size l.
-Proof. by move/prefixes_num_size'. Qed.
-
 Lemma prefV l pr e n:
   (pr, e, n) \in prefixes l -> 
   [/\ pr = take n l, 
@@ -159,6 +147,36 @@ Proof.
 move=>H; case: (in_prefixes_full H)=>G1 G2 G3.
 by rewrite G3 -G2; split=>//; move: (take_nth_drop G1)=>->.
 Qed.
+
+Lemma prefix_rev l1 l2 l et e :
+  e \in l2 -> l = l1 ++ et :: l2  ->
+  exists i, (take i l, e, i) \in prefixes l /\ et \in take i l.
+Proof.
+case/splitP=>{l2}l2 l3.
+rewrite -cat_cons -cats1 cat_cons -catA cat1s -cat_cons catA.
+set i := size (l1 ++ et :: l2); move=>E; exists i.
+have X1 : e \in l by rewrite E mem_cat inE eqxx orbC.  
+have X2: i < size l
+  by rewrite/i E!size_cat -addnA ltn_add2l -{1}[size (_::l2)]addn0 ltn_add2l. 
+have Y: forall a, a - a = 0 by elim.
+have X3: nth e0 l i = e by rewrite E nth_cat /i ltnn Y/=. 
+move: (prefixes_in' X1 X2 X3)=>H; split=>//.
+by rewrite E take_size_cat /i// mem_cat inE eqxx orbC.
+Qed.
+
+Lemma prefix_wavefront l1 l2 l et e :
+  e \in l2 -> l = l1 ++ et :: l2  -> kind et == T ->
+  exists i pre, (pre, e, i) \in prefixes l /\ 
+                (source et, fld et) \in (wavefront pre).
+Proof.
+move=>H1 H2 T; case:(prefix_rev H1 H2)=>i[H3 H4].
+exists i, (take i l); split=>//.
+by apply/mapP; exists et=>//; rewrite mem_filter T. 
+Qed.
+
+(******************************************************************)
+(*    Apex procedure for exposing reachable objects in the graph  *)
+(******************************************************************)
 
 Definition expose_apex : seq ptr := 
   [seq let pi := pe.1.2    in
@@ -172,6 +190,12 @@ Definition expose_apex : seq ptr :=
              (kindMA k) && ((o, f) \in wavefront pre)].
 
 
+(* The following lemma roughly corresponds to "pre-safety" of the
+   expose_apex procedure. It states that if there is an MA-entry 'ema'
+   in the log, preceded by some T-entry 'et', and moreover, the value
+   n of the new field, introduced by 'ema' made it to the final graph
+   as a value of field 'f' of the object 'o', traced by 'et' (o#f =
+   n), then this value is going to be reported by expose_apex.  *)
 
 Lemma expose_apex_fires l1 l2 et ema :
   let o := source ema in
@@ -182,36 +206,69 @@ Lemma expose_apex_fires l1 l2 et ema :
   source et = o -> fld et = f -> o#f = n ->
   n \in expose_apex.
 Proof.  
+move=>/=E D Kma Kt S F N.
+case: (prefix_wavefront D E Kt)=>i[pre][H1] H2.
+apply/mapP; exists (pre, ema, i)=>//=.
+by rewrite mem_filter Kma/= -S -F H2 H1.
+Qed.
 
-Admitted.
+Definition matchingMA et := fun ema =>
+  [&& kindMA (kind ema), source et == source ema & fld et == fld ema].
+
+(* If there is no matching MA-entries for et -> its value survives
+   till the end. *)
+
+Lemma trace_pure et l1 l2: 
+  kind et == T -> ~~ has (matchingMA et) l2 -> p = l1 ++ et :: l2 -> 
+  source et # fld et = new et.
+Proof.
+move=>Kt; elim:l2=>[_|].
+
+rewrite cats1=>Z; subst p.
+have er: {er : ExecuteResult | executeLog g0 l1 = Some er}
+  by apply: replayLogRcons; apply: (exist _ _ epf).
+case:er=>[[h' g']]pf'.
+
+
+
+
+Qed.
+
+(* [TODO] The next step is prove that for any T-entry, its captured
+   o.f-value is either in the graph, or there exists an MA-antry *behind*
+   it in the log, which overrides the value of o.f. *)
+
+
+
+Lemma traced_objects et l1 l2 :
+  let o := source et in
+  let f := fld    et in
+  let n := new    et in
+  p = l1 ++ et :: l2 -> kind et == T -> 
+  o#f = n \/
+  has (fun ema => (matchingMA et ema) && (o#f == new ema)) l2.
+Proof.
+move=>/=E Kt.
+case X: (has (matchingMA et) l2); last first; [left | right].
+
+move/negbT: X=>/hasPn.
+
+Search _ (has _).
+
+
 
   
+
+
+(* The following subfacts should be proved:
   
 
 
-(* Now, we have to show that only reachable objects are exposed by the
-   'expose_apex' procedure... *)
+ *)
 
-(*
 
-The intuition is as follows: 'expose_apex' rescans the log prefix, and
-for each object entry in it (pi) checks, whether it's allocation or
-modification (kindMA k), and furthermore, it can affect any of the
-knowledge that has been already traced by the collector
-previoiusly. For the last, we check whether this object-field pair (o,
-f) has been traced, i.e., whether it belongs to the wavefront,
-preceding the actual entry being examined. 
 
-So, what the correctness statement should look like? Presumably,
-something as follows:
 
-[1] First, we define all reachable objects at the moments tracing was
-    done (we now have a certified function for this).  
-
-Specifically, such objects are those that are pointed to by the fields
-in T-entries. 
-
-*)
 
 (* Collect all traced objects from the log *)
 Definition tracedObjects3 : seq (ptr * nat * ptr) :=
@@ -220,39 +277,16 @@ Definition tracedObjects3 : seq (ptr * nat * ptr) :=
 Definition tracedObjFields : seq (ptr * nat) := unzip1 tracedObjects3.
 Definition tracedTargets : seq ptr := unzip2 tracedObjects3.
 
-(* 
-
-We need to prove the following facts about traced objects:
-
-T1: If (pi \in p) then (old pi) \in dom h, where h is a heap, obtained
-    by replaying (take (index pi p) p). In other words, the tracked
-    object belong to the heap.
-
-T2: Graph monotonicity: let (hn, gn) = replayLog (take n p), then (dom
-    hn <= dom h) -- the domain of the graph only grows.
-
-T1 an T2 combined give us that tracked objects form a subset of the
-final heap h.
-
-
-[2] Next, we define the set of actual objects in the final heap-graph
-    with respect to traced objects.
-
-*)
+(* Next, we define the set of actual objects in the final heap-graph
+   with respect to traced objects. *)
 
 Definition actualTargets : seq ptr := 
   [seq (pf.1)#(pf.2) | pf <- tracedObjFields].
 
-(*
-
-[3] Finally, the following theorem states the soundness of the
-    expose_apex procedure: it adds to the tracedTargets a set of
-    pointers, such that the union of the two contains the actual
-    targets by the end of the log execution.
-
-
-[TODO]: A bunch of lemmas about waterfronts and affected fileds.
-*)
+(* The following theorem states the soundness of the expose_apex
+   procedure: it adds to the tracedTargets a set of pointers, such
+   that the union of the two contains the actual targets by the end of
+   the log execution. *)
 
 
 Theorem expose_apex_sound : 
