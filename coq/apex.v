@@ -172,6 +172,23 @@ Definition expose_apex : seq ptr :=
              (kindMA k) && ((o, f) \in wavefront pre)].
 
 
+
+Lemma expose_apex_fires l1 l2 et ema :
+  let o := source ema in
+  let f := fld    ema in
+  let n := new    ema in
+  p = l1 ++ et :: l2 -> ema \in l2 -> 
+  kindMA (kind ema) -> kind et == T ->
+  source et = o -> fld et = f -> o#f = n ->
+  n \in expose_apex.
+Proof.  
+
+Admitted.
+
+  
+  
+
+
 (* Now, we have to show that only reachable objects are exposed by the
    'expose_apex' procedure... *)
 
