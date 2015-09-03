@@ -388,12 +388,24 @@ Proof.
 set g1 :=  pre_allocG g n fnum; move: g1.
 rewrite /pre_alloc; case A: ((n != null) && (n \notin dom h))=>g1; last first.
 - by rewrite (proof_irrelevance _ g g1).
+move: (pre_allocDom g fnum A) => K; rewrite /pre_alloc A in K .
 case B: (s == n).
 - move/eqP: B=>Z; subst s.
   case/andP:A=>A1 A2; move: (graphNoPt g A2)=>->.
-  admit.
-admit.
-Admitted.
+  rewrite (edgeE (erefl (n :-> ncons fnum null [::] \+ h))).
+  by rewrite nth_ncons; case: ifP=>_; rewrite !nth_nil.
+
+case D: (s \in dom h); last first.
+- move/negbT: D=>D.
+  rewrite (graphNoPt g D) nth_nil.
+  have X: s \notin dom (n :-> ncons fnum null [::] \+ h)
+    by rewrite -!keys_dom -K inE B keys_dom; move/negbTE: D=>->.
+  by rewrite (graphNoPt g1 X) nth_nil.
+
+
+(* Last bit remaining... *)
+
+Qed.
 
 
 
@@ -410,7 +422,6 @@ case: edgeP; last first.
 - move/negbTE.
   rewrite hdomPtUn inE andbC eq_sym N /= (proj1 g1) andbC/= => /negbT.
   by move/(graphNoPt g)=>->.
-
 move=>xs E1 V D _.
 rewrite hfreePtUn2// N/= joinA [s :-> _ \+ _]joinC -joinA in E1.
 by case: (hcancelV V E1)=>_ V' E2; rewrite (@edgeE h g _ _ _ E2).
