@@ -296,8 +296,11 @@ rewrite (proof_irrelevance g g1).
 by case/andP: (C)=>/andP=>[[G]]/eqP Z1 /eqP Z2; subst nw o. 
 Qed.
 
+(* An entry that can affect the value of s.f in the final graph. *)
+
 Definition matchingMA s f := fun ema =>
   [&& kindMA (kind ema), s == source ema & f == fld ema].
+
 
 (* The entry 'e', which doesn't modify a value of the field 'f' of
    object 'o' doesn't affect the value of o.f in the final graph. *)
@@ -310,25 +313,27 @@ Lemma replayLogRconsMA_neg h0 (g0 : graph h0) l e s f h g :
     nth null (fields g s) f = nth null (fields g' s) f.
 Proof.
 case/replayLogRcons=>h1[g1][H1]H2 M; exists h1, g1; split=>//.
-case: e M H2=>k s' f' o n; rewrite /matchingMA/=; case: k=>//=[_||fnum].
-- move=>E; move:(condK_true E)=>C.
-  case: (condKE (traceG (new:=n)) 
+case: e M H2=>k s' f' o n; rewrite /matchingMA/=; case: k=>//=[_|H2|fnum H2];
+move=>E; move:(condK_true E)=>C.
+
+(* Trace *)
+- case: (condKE (traceG (new:=n)) 
      (fun _ : _ => Some {| hp := h1; gp := g1 |}) C)=>? E2.
   by rewrite E2 in E; case: E=>Z; subst h1; rewrite (proof_irrelevance g g1).
 
-- move=>H2 E; move:(condK_true E)=>C.
-  case: (condKE  (modifyG g1 f' (new:=n))
+(* Modify *)
+- case: (condKE (modifyG g1 f' (new:=n))
         (fun g' : _ => Some {|hp := modify g1 s' f' n; gp := g'|}) C)=>g' E2.
   rewrite E2 in E; case: E=>Z; subst h. 
-  by move: (modify_field g s f C); move/negbTE: H2=>->/=.
+  by move: (modify_field g s f C); move/negbTE: H2=>->.
 
-
-(* The lst case : allocation *)
-
-Admitted.
-
-
-
+(* Allocate *)
+case: (condKE (allocG g1 fnum f' (new:=n)) (fun g' : _ =>
+       Some {| hp := alloc g1 n fnum s' f'; gp := g' |}) C)=>g' E2.
+rewrite E2 in E; case: E=>Z; subst h. 
+rewrite eqxx [_ && true]andbC /= in C.
+by move: (alloc_field g s f C); move/negbTE: H2=>->.
+Qed.
 
 End ExecuteLogs.
 

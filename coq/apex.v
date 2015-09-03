@@ -272,12 +272,6 @@ Qed.
 (*  Need to prove existence of such object in the prefix now ...*)
 
 
-
-
-
-
-
-
 (* Collect all traced objects from the log *)
 Definition tracedObjects3 : seq (ptr * nat * ptr) :=
   [seq (source pi, fld pi, old pi) | pi <- p & (kind pi) == T]. 
@@ -289,7 +283,7 @@ Definition tracedTargets : seq ptr := unzip2 tracedObjects3.
    with respect to traced objects. *)
 
 Definition actualTargets : seq ptr := 
-  [seq (pf.1)#(pf.2) | pf <- tracedObjFields].
+  [seq (pf.1)#(pf.2)@g | pf <- tracedObjFields].
 
 (* The following theorem states the soundness of the expose_apex
    procedure: it adds to the tracedTargets a set of pointers, such
