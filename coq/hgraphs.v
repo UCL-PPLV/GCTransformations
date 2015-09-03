@@ -394,21 +394,22 @@ case B: (s == n).
   case/andP:A=>A1 A2; move: (graphNoPt g A2)=>->.
   rewrite (edgeE (erefl (n :-> ncons fnum null [::] \+ h))).
   by rewrite nth_ncons; case: ifP=>_; rewrite !nth_nil.
-
 case D: (s \in dom h); last first.
 - move/negbT: D=>D.
   rewrite (graphNoPt g D) nth_nil.
   have X: s \notin dom (n :-> ncons fnum null [::] \+ h)
     by rewrite -!keys_dom -K inE B keys_dom; move/negbTE: D=>->.
   by rewrite (graphNoPt g1 X) nth_nil.
-
-
-(* Last bit remaining... *)
-
+apply/sym; case: edgeP; last by move/negbTE; rewrite D.
+move=>xs E V _ S; move:g1; rewrite E=>g1.
+case: edgeP; last first.
+- rewrite joinC -joinA hdomPtUn inE eqxx/=.
+  by rewrite joinC -joinA in g1; rewrite (proj1 g1).
+move=>xs' E2 V2 D2 _.
+rewrite hfreePtUn2// B /=in E2.
+rewrite [n :-> _ \+ _]joinC -joinA in V2 E2.
+by case: (hcancelV V2 E2)=>->.
 Qed.
-
-
-
 
 
 Lemma pre_alloc_fields h (g : graph h) n fnum s: 
@@ -426,6 +427,8 @@ move=>xs E1 V D _.
 rewrite hfreePtUn2// N/= joinA [s :-> _ \+ _]joinC -joinA in E1.
 by case: (hcancelV V E1)=>_ V' E2; rewrite (@edgeE h g _ _ _ E2).
 Qed.
+
+(*  Relevant changes due to allocation of new objects.  *)
 
 Lemma alloc_field h1 (g1 : graph h1) s' f' fnum n o
                    (g : graph (alloc g1 n fnum s' f')) s f: 
