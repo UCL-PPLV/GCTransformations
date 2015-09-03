@@ -218,14 +218,33 @@ Definition matchingMA et := fun ema =>
 (* If there is no matching MA-entries for et -> its value survives
    till the end. *)
 
-Lemma trace_pure et l1 l2: 
-  kind et == T -> ~~ has (matchingMA et) l2 -> p = l1 ++ et :: l2 -> 
+Lemma trace_pure l et l1 l2: 
+  kind et == T -> 
+  executeLog g0 l = Some {| hp := h; gp := g |} ->
+  ~~ has (matchingMA et) l2 -> l = l1 ++ et :: l2 -> 
   source et # fld et = new et.
 Proof.
-move=>Kt; elim:l2=>[_|e l Hi H].
-- by rewrite cats1=>Z; subst p; case: (replayLogRconsT epf Kt).
+move=>Kt; elim/last_ind:l2 l=>[l pf _|l2 e Hi l H1 H2].
+- by rewrite cats1=>Z; subst l; case: (replayLogRconsT pf Kt).
 
-admit.
+(* Now we need to prove a lemma, similar to replayLogRconsT for MA *)
+
+Admitted.
+
+
+Lemma pickLastMAInSuffix l l1 l2 o f:
+  l = l1 ++ l2 ->
+  executeLog g0 l = Some {| hp := h; gp := g |} ->
+  has (fun e => [&& kindMA (kind e), o == source e & f == fld e]) l2 ->
+  has (fun e => [&& kindMA (kind e), o == source e,  f == fld e & 
+                    o#f == new e]) l2.
+Proof.
+elim/last_ind: l2 l=>//ls e Hi l E H1 H2.
+rewrite !has_rcons in H2 *.
+(* case X: (o # f == new e). [case/orP: H2;[|move=>H2]|]. *)
+(* - by case/andP=>->/andP[]->->. *)
+
+Search _ (has) (rcons).
 
 Admitted.
 
@@ -242,13 +261,20 @@ Lemma traced_objects et l1 l2 :
   let n := new    et in
   p = l1 ++ et :: l2 -> kind et == T -> 
   o#f = n \/
-  has (fun ema => (matchingMA et ema) && (o#f == new ema)) l2.
+  has (fun e => [&& kindMA (kind e), o == source e,  f == fld e & 
+                    o#f == new e]) l2.
 Proof.
-(* move=>/=E Kt. *)
-(* case X: (has (matchingMA et) l2); last first; [left | right]. *)
-(* move/negbT: X=>/hasPn. *)
-(* Search _ (has _). *)
-Admitted.
+move=>/= E Kt.
+case H: (has (matchingMA et) l2); [right|left]; last first.
+- by apply: (@trace_pure p et l1 l2 Kt epf)=>//; apply/negbT.
+rewrite /matchingMA in H *; rewrite -cat_rcons in E. 
+by apply: (pickLastMAInSuffix E H). 
+Qed.
+
+(*  Need to prove existence of such object in the prefix now ...*)
+
+
+
 
 
 
