@@ -1,7 +1,7 @@
 Require Import Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat.
 Require Import Ssreflect.eqtype Ssreflect.ssrfun Ssreflect.seq.
 Require Import MathComp.path.
-Require Import Eqdep pred idynamic ordtype pcm finmap unionmap heap coding. 
+Require Import Eqdep pred prelude idynamic ordtype pcm finmap unionmap heap coding. 
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
@@ -318,6 +318,62 @@ Lemma traceG h (g : graph h) x fld old new :
 Proof.
 by move=>Dn; rewrite /trace; case: ifP=>Dx//=; case: ifP=>_//=.
 Qed.
+
+(***********************************************************************)
+(*            Invariant lemmas about modify and alloc                  *) 
+(***********************************************************************)
+
+Lemma modify_field h1 (g1 : graph h1) s' f' n o
+                   (g : graph (modify g1 s' f' n)) s f: 
+  (s' \in dom h1) && ((n \in dom h1) || (n == null)) && 
+  (o  \in [predU pred1 null & dom h1]) -> 
+  if (s == s') && (f == f') 
+  then nth null (fields g s) f = (if size (fields g1 s) <= f then null else n)
+  else nth null (fields g s) f = nth null (fields g1 s) f.
+Proof.
+move=>C; move: (modifyDom g1 f' C)=>K. 
+case/andP: C=>/andP [H1 H2] _.
+move: g K; rewrite /modify H1; case: ifP=>H3 g K.
+- move: (proof_irrelevance _ g g1)=>Z; subst g1.
+  case: ifP=>///andP[/eqP E1/eqP E2]; subst s' f'.
+  by rewrite (nth_default _ H3) H3.
+
+move: g; set h := s' :-> set_nth null (fields g1 s') f' n \+ free s' h1=>g.
+have E1: h = s' :-> set_nth null (fields g1 s') f' n \+ free s' h1 by [].
+move:(@edgeE h g (free s' h1) _ _ E1)=> E2; case: ifP.
+- case/andP=>/eqP Z1/eqP Z2; subst s' f'; rewrite H3 E2.
+  by rewrite nth_set_nth/= eqxx.
+move/negbT; rewrite negb_and=>/orP H4; apply/sym; case: edgeP; last first.
+- case: edgeP=>//xs' E3 V D1 _ D2.
+  rewrite E1 in D1. move: (K s). rewrite !keys_dom D1. 
+  by move/negbTE: D2=>->.
+move=>xs E3 V D G.
+case: edgeP=>//; last first.
+- by move: (K s); rewrite !keys_dom D=>G'; move/negbTE; rewrite -G'.
+move=>xs' E4 V' D' _.
+case X: (s == s'); last first. 
+
+- rewrite hfreePtUn2 // ?X in E4; rewrite {1}E1 in E4. rewrite {2}E3 in E4.
+  rewrite hfreePtUn2 ?(eq_sym s') ?X in E4; last by rewrite E3 in V. 
+  rewrite joinA -[_ \+ s:->_]joinC -!joinA in E4.
+  suff V1: valid (s :-> xs \+
+           (s' :-> set_nth null (fields g1 s') f' n \+ free s' (free s h1)))
+     by case: (hcancelV V1 E4)=>->.
+  rewrite E1 {2}E3 hfreePtUn2 ?(eq_sym s') ?X in V'; last by rewrite E3 in V.
+  by rewrite joinA -[_ \+ s:->_]joinC -!joinA in V'.
+
+move/eqP:(X)=>Z; subst s'.
+rewrite {2}E3 hfreePtUn -?E3 // in E1.
+rewrite E4 in V' E1; case: (hcancelV V' E1)=>Z _ _; subst xs'; clear E1.
+have D2: s \in dom h1 by rewrite E3 hdomPtUn inE/=-E3 V eqxx.
+move: (graphPt g1 D2)=>E5; rewrite {1}E3 in E5; rewrite E3 in V.
+case: (hcancelV V E5)=>Z _ _; subst xs.
+have H5: f != f' by case: H4=>//; move/negbTE; rewrite X.
+by move/negbTE: H5=>H5; rewrite nth_set_nth/= H5. 
+Qed.
+
+
+
 
 (************************************************************************)
 (*                   [Sanity Constraints]                               *)

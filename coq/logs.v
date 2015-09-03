@@ -276,6 +276,7 @@ Qed.
 (*                Important lemmas about log executions                        *)
 (*******************************************************************************)
 
+
 (* T-entries do not affect the execution *)
 
 Lemma replayLogRconsT h0 (g0 : graph h0) l e h g :
@@ -288,7 +289,7 @@ case: e=>k s f o nw; case: k=>//= H2 _.
 move/replayLogRcons: H2=>[h1][g1][H3]/= E.
 move:(condK_true E)=>C.
 case: (condKE (traceG (new:=nw)) 
-   (fun _ : trace g1 s f = h1 => Some {| hp := h1; gp := g1 |}) C)=>? E2.
+   (fun _ : _ => Some {| hp := h1; gp := g1 |}) C)=>? E2.
 rewrite E2 in E. 
 case: E=>Z; subst h1.
 rewrite (proof_irrelevance g g1).
@@ -298,14 +299,35 @@ Qed.
 Definition matchingMA s f := fun ema =>
   [&& kindMA (kind ema), s == source ema & f == fld ema].
 
-Lemma replayLogRconsMA_neg h0 (g0 : graph h0) l e o f h g :
+(* The entry 'e', which doesn't modify a value of the field 'f' of
+   object 'o' doesn't affect the value of o.f in the final graph. *)
+
+Lemma replayLogRconsMA_neg h0 (g0 : graph h0) l e s f h g :
   executeLog g0 (rcons l e) = Some {| hp := h; gp := g |} ->
-  ~~ matchingMA o f e ->
+  ~~ matchingMA s f e ->
   exists h' g', 
     executeLog g0 l = Some {| hp := h'; gp := g' |} /\ 
-    nth null (fields g o) f = nth null (fields g' o) f.
+    nth null (fields g s) f = nth null (fields g' s) f.
 Proof.
+case/replayLogRcons=>h1[g1][H1]H2 M; exists h1, g1; split=>//.
+case: e M H2=>k s' f' o n; rewrite /matchingMA/=; case: k=>//=[_||fnum].
+- move=>E; move:(condK_true E)=>C.
+  case: (condKE (traceG (new:=n)) 
+     (fun _ : _ => Some {| hp := h1; gp := g1 |}) C)=>? E2.
+  by rewrite E2 in E; case: E=>Z; subst h1; rewrite (proof_irrelevance g g1).
+
+- move=>H2 E; move:(condK_true E)=>C.
+  case: (condKE  (modifyG g1 f' (new:=n))
+        (fun g' : _ => Some {|hp := modify g1 s' f' n; gp := g'|}) C)=>g' E2.
+  rewrite E2 in E; case: E=>Z; subst h. 
+  by move: (modify_field g s f C); move/negbTE: H2=>->/=.
+
+
+(* The lst case : allocation *)
+
 Admitted.
+
+
 
 
 End ExecuteLogs.
