@@ -20,7 +20,7 @@ Variables (h : heap) (g: graph h).
 Variable (epf : executeLog g0 p = Some (ExRes g)).
 
 (* Dereferencing an object field *)
-Notation "o '#' f" := (nth null (fields g o) f)
+Notation "o '#' f '@' g" := (nth null (fields g o) f)
   (at level 43, left associativity).
 
 (******************************************************************)
@@ -182,12 +182,12 @@ Definition expose_apex : seq ptr :=
   [seq let pi := pe.1.2    in
        let o  := source pi in
        let f  := fld pi    in 
-       o#f | pe <- prefixes p &
-             let: (pre, pi, _) := pe          in   
-             let k             := (kind pi)   in   
-             let o             := (source pi) in
-             let f             := (fld pi)    in   
-             (kindMA k) && ((o, f) \in wavefront pre)].
+       o#f@g | pe <- prefixes p &
+               let: (pre, pi, _) := pe          in   
+               let k             := (kind pi)   in   
+               let o             := (source pi) in
+               let f             := (fld pi)    in   
+               (kindMA k) && ((o, f) \in wavefront pre)].
 
 
 (* The following lemma roughly corresponds to "pre-safety" of the
@@ -203,7 +203,7 @@ Lemma expose_apex_fires l1 l2 et ema :
   let n := new    ema in
   p = l1 ++ et :: l2 -> ema \in l2 -> 
   kindMA (kind ema) -> kind et == T ->
-  source et = o -> fld et = f -> o#f = n ->
+  source et = o -> fld et = f -> o#f@g = n ->
   n \in expose_apex.
 Proof.  
 move=>/=E D Kma Kt S F N.
@@ -212,40 +212,40 @@ apply/mapP; exists (pre, ema, i)=>//=.
 by rewrite mem_filter Kma/= -S -F H2 H1.
 Qed.
 
-Definition matchingMA et := fun ema =>
-  [&& kindMA (kind ema), source et == source ema & fld et == fld ema].
+(* [trace_pure]: If there is no matching MA-entries for the T-entry
+   'et' in the corresponding suffix of 'l', then et's recorded value
+   survives till the final graph. *)
 
-(* If there is no matching MA-entries for et -> its value survives
-   till the end. *)
-
-Lemma trace_pure l et l1 l2: 
+Lemma trace_pure l h' (g' : graph h') et l1 l2: 
   kind et == T -> 
-  executeLog g0 l = Some {| hp := h; gp := g |} ->
-  ~~ has (matchingMA et) l2 -> l = l1 ++ et :: l2 -> 
-  source et # fld et = new et.
+  executeLog g0 l = Some {| hp := h'; gp := g' |} ->
+  ~~ has (matchingMA (source et) (fld et)) l2 -> l = l1 ++ et :: l2 -> 
+  source et # fld et @ g' = new et.
 Proof.
-move=>Kt; elim/last_ind:l2 l=>[l pf _|l2 e Hi l H1 H2].
+move=>Kt; elim/last_ind:l2 l l1 h' g'=>
+  [l l1 h' g' pf _|l2 e Hi l l1 h' g' H1 H2].
 - by rewrite cats1=>Z; subst l; case: (replayLogRconsT pf Kt).
+rewrite has_rcons negb_or in H2; case/andP: H2=>H2 H3.
+rewrite -cats1 -cat_rcons catA cats1 cat_rcons. 
+set l' := (l1 ++ et :: l2)=>H4; subst l.
+case: (replayLogRconsMA_neg H1 H2)=>h1[g1][H5]E; rewrite E.
+move/eqP: (eq_refl l'); rewrite {2}/l'=>H6.
+by apply: (Hi _ _ _ _ H5 H3 H6).
+Qed.
 
-(* Now we need to prove a lemma, similar to replayLogRconsT for MA *)
+(* [TODO] Explain the following lemma *)
 
-Admitted.
-
-
-Lemma pickLastMAInSuffix l l1 l2 o f:
+Lemma pickLastMAInSuffix l l1 l2 h' (g' : graph h') o f:
   l = l1 ++ l2 ->
-  executeLog g0 l = Some {| hp := h; gp := g |} ->
+  executeLog g0 l = Some {| hp := h'; gp := g' |} ->
   has (fun e => [&& kindMA (kind e), o == source e & f == fld e]) l2 ->
   has (fun e => [&& kindMA (kind e), o == source e,  f == fld e & 
-                    o#f == new e]) l2.
+                    o#f@g' == new e]) l2.
 Proof.
-elim/last_ind: l2 l=>//ls e Hi l E H1 H2.
+elim/last_ind: l2 l h' g'=>//ls e Hi l h' g' E H1 H2.
 rewrite !has_rcons in H2 *.
 (* case X: (o # f == new e). [case/orP: H2;[|move=>H2]|]. *)
 (* - by case/andP=>->/andP[]->->. *)
-
-Search _ (has) (rcons).
-
 Admitted.
 
 
@@ -253,22 +253,20 @@ Admitted.
    o.f-value is either in the graph, or there exists an MA-antry *behind*
    it in the log, which overrides the value of o.f. *)
 
-
-
 Lemma traced_objects et l1 l2 :
   let o := source et in
   let f := fld    et in
   let n := new    et in
   p = l1 ++ et :: l2 -> kind et == T -> 
-  o#f = n \/
-  has (fun e => [&& kindMA (kind e), o == source e,  f == fld e & 
-                    o#f == new e]) l2.
+  o#f@g = n \/
+  has (fun e => [&& kindMA (kind e), o == source e, f == fld e & 
+                    o#f@g == new e]) l2.
 Proof.
 move=>/= E Kt.
-case H: (has (matchingMA et) l2); [right|left]; last first.
-- by apply: (@trace_pure p et l1 l2 Kt epf)=>//; apply/negbT.
+case H: (has (matchingMA (source et) (fld et)) l2); [right|left]; last first.
+- by apply: (@trace_pure p h g et l1 l2 Kt epf)=>//; apply/negbT.
 rewrite /matchingMA in H *; rewrite -cat_rcons in E. 
-by apply: (pickLastMAInSuffix E H). 
+by apply: (pickLastMAInSuffix E epf H).
 Qed.
 
 (*  Need to prove existence of such object in the prefix now ...*)

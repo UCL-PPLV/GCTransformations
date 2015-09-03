@@ -295,6 +295,19 @@ rewrite (proof_irrelevance g g1).
 by case/andP: (C)=>/andP=>[[G]]/eqP Z1 /eqP Z2; subst nw o. 
 Qed.
 
+Definition matchingMA s f := fun ema =>
+  [&& kindMA (kind ema), s == source ema & f == fld ema].
+
+Lemma replayLogRconsMA_neg h0 (g0 : graph h0) l e o f h g :
+  executeLog g0 (rcons l e) = Some {| hp := h; gp := g |} ->
+  ~~ matchingMA o f e ->
+  exists h' g', 
+    executeLog g0 l = Some {| hp := h'; gp := g' |} /\ 
+    nth null (fields g o) f = nth null (fields g' o) f.
+Proof.
+Admitted.
+
+
 End ExecuteLogs.
 
 Section Wavefronts.
