@@ -351,10 +351,14 @@ case/andP: H2=>/eqP Z1/eqP Z2; subst s' f'.
   rewrite E2 in E; case: E=>Z; subst h. 
   move: (@modify_field _ _ s f n o g s f C).
   by rewrite !eqxx/= leqNgt =>->; case/andP: C=>_/andP[->]/=.
-
-
-Admitted.
-
+case: (condKE (allocG fnum (new:=n))
+        (fun g' : _ =>
+         Some {| hp := alloc g1 n fnum s f; gp := g' |}) C)=>g' E2.
+rewrite E2 in E; case: E=>Z; subst h. 
+rewrite eqxx -(andbC true) /= in C.
+move: (alloc_field g s f C); rewrite !eqxx/= leqNgt =>->.
+by case/andP: C=>_/andP[->].
+Qed.
 
 End ExecuteLogs.
 
