@@ -30,7 +30,7 @@ The structure of the project:
    |
 ---- logs.v -- implementation of collector/mutator logs
    |
----- ...
+---- apex.v -- implementation of the "apex" expose procedure
 
 
 
