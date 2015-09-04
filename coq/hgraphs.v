@@ -379,6 +379,25 @@ have H5: f != f' by case: H4=>//; move/negbTE; rewrite X.
 by move/negbTE: H5=>H5; rewrite nth_set_nth/= H5. 
 Qed.
 
+Lemma modify_size h1 (g1 : graph h1) s f n o
+                   (g : graph (modify g1 s f n)): 
+  (s \in dom h1) && ((n \in dom h1) || (n == null)) && 
+  (o  \in [predU pred1 null & dom h1]) -> 
+  size (fields g s) = size (fields g1 s).
+Proof.
+move=>C; move: (modifyDom g1 f C)=>K. 
+case/andP: C=>/andP [H1 H2] _.
+move: g K; rewrite /modify H1; case: ifP=>H3 g K.
+- by move: (proof_irrelevance _ g g1)=>Z; subst g1.
+move: g; set h := s :-> set_nth null (fields g1 s) f n \+ free s h1=>g.
+have E1: h = s :-> set_nth null (fields g1 s) f n \+ free s h1 by [].
+move:(@edgeE h g (free s h1) _ _ E1)=>->; apply/sym.
+rewrite size_set_nth; move/negbT: H3; rewrite -ltnNge=>H3.
+case X : (f.+1 == size (fields g1 s)).
+- by move/eqP: X=>->; rewrite /maxn ltnn.
+suff Y: f.+1 < size (fields g1 s) by rewrite /maxn Y.
+by rewrite !ltnNge in H3 *; rewrite leq_eqVlt eq_sym X/= H3.
+Qed.
 
 (*  Relevant changes due to allocations.  *)
 
@@ -460,6 +479,30 @@ suff N: s != n by rewrite (pre_alloc_fields g1 fnum N).
 by case B: (s == n)=>//; move/eqP: B=>Z; subst s; rewrite C1 in C2. 
 Qed.
 
+Lemma alloc_size h1 (g1 : graph h1) s f fnum n o
+                   (g : graph (alloc g1 n fnum s f)):
+  (n != null) && (n \notin dom h1) && (s \in dom h1) &&
+  (o \in [predU pred1 null & dom h1]) ->
+  size (fields g s) = size (fields g1 s).
+Proof.
+move: g; rewrite /alloc. 
+set g2 := (pre_allocG g1 n fnum); rewrite /g2=>g C.
+case/andP: (C)=>/andP[C1]C2 C3; move: (@pre_allocDom h1 g1 n fnum C1)=>P.
+have X1: n \in dom (pre_alloc h1 n fnum) by rewrite -keys_dom -P inE eqxx.
+have X2: s \in dom (pre_alloc h1 n fnum)
+         by rewrite -keys_dom -P inE keys_dom C2 orbC.
+have X3: o \in [predU pred1 null & dom (pre_alloc h1 n fnum)].
+- move:C3; rewrite !inE/==>/orP; rewrite !inE/=; case; first by move=>->.
+  by rewrite -!keys_dom -P inE=>->; rewrite -2!(orbC true).
+have X4:  (s \in dom (pre_alloc h1 n fnum)) && 
+          ((n \in dom (pre_alloc h1 n fnum)) || (n == null)) && 
+          (o  \in [predU pred1 null & dom (pre_alloc h1 n fnum)]).
+          by rewrite X1 X2 X3.
+move: (modify_size g X4)=>->; apply/sym.
+suff N: s != n by rewrite (pre_alloc_fields g1 fnum N).
+case B: (s == n)=>//; move/eqP: B=>Z; subst s.
+by case/andP:C1=>_ /negbTE; rewrite C2.
+Qed.
 
 (************************************************************************)
 (*                   [Sanity Constraints]                               *)
