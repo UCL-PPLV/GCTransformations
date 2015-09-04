@@ -136,9 +136,12 @@ Fixpoint executeLog (h : heap) (g : graph h) (l : log) :
       condK (@traceG h g x fld old new) (fun _ => executeLog g ls)
   end.
 
-
 Lemma takeSn A n (a : A) l : take n.+1 (a :: l) = a :: (take n  l).
 Proof. by []. Qed.
+
+(* [TODO] Emphasize that in the following lemmas *overconstraining*
+   lemmas allocG, modifyG and other didn't change the proofs! The
+   complexity is all hidden in hgraphs.v file. *)
 
 (* We can combing good logs transitively *)
 Lemma replayLogCons h0 (g0: graph h0) x l h1 g1 h g:
@@ -152,15 +155,15 @@ case: x=>k s f o nw; case: k=>/=[||n]; move=>E; move:(condK_true E)=> C H1.
   rewrite E2 in E; case: E=>Z; subst h1.
   have Eg: g0 = g1 by apply: (proof_irrelevance g0 g1). subst g1.
   by case: (condKE (traceG (new:=nw)) (fun _ => executeLog g0 l) C); rewrite H1.
-- case: (condKE (modifyG g0 f (new:=nw))
+- case: (condKE (modifyG (new:=nw))
         (fun pf => Some {| hp := (modify g0 s f nw); gp := pf |}) C)=>/=pg E2.
   rewrite E2 in E=>{E2}; case: pg E=>g' pg; case=>Z; subst h1; clear g'.
-  case: (condKE (modifyG g0 f (new:=nw)) (fun pf => executeLog pf l) C)=>g'->.
+  case: (condKE (modifyG (new:=nw)) (fun pf => executeLog pf l) C)=>g'->.
   by rewrite -(proof_irrelevance g1 g') H1.
-case: (condKE (allocG g0 n f (new:=nw))
+case: (condKE (allocG n (new:=nw))
         (fun pf => Some {| hp := alloc g0 nw n s f; gp := pf |}) C)=>/=pg E2.
 rewrite E2 in E=>{E2}; case: pg E=>g' pg; case=>Z; subst h1; clear g'.
-case: (condKE (allocG g0 n f (new:=nw)) 
+case: (condKE (allocG n (new:=nw)) 
       ((executeLog (h:=alloc g0 nw n s f))^~ l) C)=>g'->.
 by rewrite -(proof_irrelevance g1 g') H1.
 Qed.
@@ -182,16 +185,16 @@ move=>/=E; move:(condK_true E)=> C.
         (fun _ : trace g0 s f = h0 => Some {| hp := h0; gp := g0 |}) C). 
   by case: (condKE (traceG (new:=nw)) 
            (fun _ : trace g0 s f = h0 => executeLog g0 l) C)=>_<-. 
-- case: (condKE (modifyG g0 f (new:=nw)) 
+- case: (condKE (modifyG (new:=nw)) 
         (fun g' : _ => Some {| hp := modify g0 s f nw; gp := g' |}) C)=>g1 E2.
   exists _, g1; split=>//=.
-  case: (condKE (modifyG g0 f (new:=nw)) 
+  case: (condKE (modifyG (new:=nw)) 
         ((executeLog (h:=modify g0 s f nw))^~ l) C)=>g2 E3.
   by move: (proof_irrelevance g1 g2)=>Z; subst g2; rewrite -E3.
-case: (condKE (allocG g0 n f (new:=nw))
+case: (condKE (allocG n (new:=nw))
        (fun g' : _ => Some {| hp := alloc g0 nw n s f; gp := g' |}) C)=>g1 E2.
 exists _, g1; split=>//=.
-case: (condKE (allocG g0 n f (new:=nw)) 
+case: (condKE (allocG n (new:=nw)) 
       ((executeLog (h:=alloc g0 nw n s f))^~ l) C)=>g2 E3.
 by move: (proof_irrelevance g1 g2)=>Z; subst g2; rewrite -E3.
 Qed.
@@ -218,10 +221,10 @@ case: e=>k s f o nw; case: k=>/=[||n] E; move:(condK_true E)=> C.
 - case: (condKE (traceG (new:=nw)) 
         (fun _ : trace g0 s f = h0 => Some {| hp := h; gp := g |}) C)=>? E2.
   by exists h0, g0. 
-- case: (condKE (modifyG g0 f (new:=nw)) 
+- case: (condKE (modifyG (new:=nw)) 
         (fun pf => Some {| hp := _; gp := pf |}) C)=>[pg E2].
   by exists h0, g0. 
-case: (condKE (allocG g0 n f (new:=nw)) 
+case: (condKE (allocG n (new:=nw)) 
       (fun g'=> Some {| hp := _; gp := g' |}) C)=>g' E2. 
 by exists h0, g0. 
 Qed.
@@ -320,12 +323,12 @@ move=>E; move:(condK_true E)=>C.
      (fun _ : _ => Some {| hp := h1; gp := g1 |}) C)=>? E2.
   by rewrite E2 in E; case: E=>Z; subst h1; rewrite (proof_irrelevance g g1).
 (* Modify *)
-- case: (condKE (modifyG g1 f' (new:=n))
+- case: (condKE (modifyG (new:=n))
         (fun g' : _ => Some {|hp := modify g1 s' f' n; gp := g'|}) C)=>g' E2.
   rewrite E2 in E; case: E=>Z; subst h. 
   by move: (modify_field g s f C); move/negbTE: H2=>->.
 (* Allocate *)
-case: (condKE (allocG g1 fnum f' (new:=n)) (fun g' : _ =>
+case: (condKE (allocG fnum (new:=n)) (fun g' : _ =>
        Some {| hp := alloc g1 n fnum s' f'; gp := g' |}) C)=>g' E2.
 rewrite E2 in E; case: E=>Z; subst h. 
 rewrite eqxx [_ && true]andbC /= in C.
@@ -343,15 +346,11 @@ case/replayLogRcons=>h1[g1][H1]H2 M; exists h1, g1; split=>//.
 case: e M H2=>k s' f' o n; rewrite /matchingMA/=; case: k=>//=[H2|fnum H2];
 move=>E; move:(condK_true E)=>C;
 case/andP: H2=>/eqP Z1/eqP Z2; subst s' f'.
-
-- case: (condKE (modifyG g1 f (new:=n))
+- case: (condKE (modifyG (new:=n))
         (fun g' : _ => Some {|hp := modify g1 s f n; gp := g'|}) C)=>g' E2.
   rewrite E2 in E; case: E=>Z; subst h. 
-
-move: (@modify_field _ _ s f n o g s f C).
-rewrite !eqxx/= =>->.
-move: g. rewrite /modify.
-
+  move: (@modify_field _ _ s f n o g s f C).
+  by rewrite !eqxx/= leqNgt =>->; case/andP: C=>_/andP[->]/=.
 
 
 Admitted.
