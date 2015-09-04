@@ -244,10 +244,21 @@ Lemma pickLastMAInSuffix l l1 l2 h' (g' : graph h') o f:
 Proof.
 elim/last_ind: l2 l h' g'=>//ls e Hi l h' g' E H1 H2.
 rewrite !has_rcons in H2 *.
-(* case X: (o # f == new e). [case/orP: H2;[|move=>H2]|]. *)
-(* - by case/andP=>->/andP[]->->. *)
-Admitted.
+case X: [&& kindMA (kind e), o == source e & f == fld e]; last first.
 
+(* First case: the last entry not a matching one *)
+move/negbT: X; rewrite negb_and=>/orP; case=>G.
+
+(* (a) It is a T-entry => by induction hypothesis *)
+- have T: kind e == T by case: (kind e) G.
+  rewrite -rcons_cat in E; subst l.
+  case: (replayLogRconsT H1 T)=>H3 H4.
+  move/eqP: T=>T; rewrite T /= in H2.
+  by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2)=>->; rewrite orbC.
+
+
+
+Admitted.
 
 (* [TODO] The next step is prove that for any T-entry, its captured
    o.f-value is either in the graph, or there exists an MA-antry *behind*
