@@ -296,11 +296,15 @@ Qed.
 
 
 (* Collect all traced objects from the log *)
-Definition tracedObjects3 : seq (ptr * nat * ptr) :=
-  [seq (source pi, fld pi, old pi) | pi <- p & (kind pi) == T]. 
+Definition tracedEntries : seq LogEntry :=
+  [seq pi <- p | (kind pi) == T]. 
 
-Definition tracedObjFields : seq (ptr * nat) := unzip1 tracedObjects3.
-Definition tracedTargets : seq ptr := unzip2 tracedObjects3.
+Definition tracedObjFields := 
+  [seq (source et, fld et) | et <- tracedEntries].
+
+Definition tracedTargets :=
+  [seq new et | et <- tracedEntries].
+
 
 (* Next, we define the set of actual objects in the final heap-graph
    with respect to traced objects. *)
@@ -313,11 +317,56 @@ Definition actualTargets : seq ptr :=
    that the union of the two contains the actual targets by the end of
    the log execution. *)
 
+Lemma in_split {A : eqType} e (l : seq A): 
+  e \in l -> exists l1 l2, l = l1 ++ e :: l2.
+Proof.
+elim:l=>//x xs Hi; rewrite inE/=; case/orP.
+- by move/eqP=>Z; subst x; exists [::], xs; rewrite cat0s.
+by case/Hi=>l1[l2]->; exists (x :: l1), l2. 
+Qed.
+
+Lemma tracedEntriesP e: e \in tracedEntries ->
+  kind e == T /\ exists l1 l2, p = l1 ++ e :: l2.
+Proof.
+rewrite /tracedEntries mem_filter=>/andP[->]H; split=>//.
+by apply: in_split.
+Qed.
+
+Lemma tracedObjFieldsP sf: sf \in tracedObjFields ->
+  exists et l1 l2, 
+  [/\ (source et, fld et) = sf, p = l1 ++ et :: l2 & kind et == T].
+Proof.
+case/mapP=>et/tracedEntriesP[H1][l1][l2]H2 H3; subst sf.
+by exists et, l1, l2.
+Qed.
+
+Lemma tracedTargetsP x : x \in tracedTargets ->   
+  exists et l1 l2, 
+  [/\ p = l1 ++ et :: l2, kind et == T & x = new et].
+Proof.
+case/mapP=>et/tracedEntriesP[H1][l1][l2]H2 H3; subst x.
+by exists et, l1, l2.
+Qed.
+
+Lemma actualTargetsP x : x \in actualTargets ->   
+  exists et l1 l2, 
+  [/\ p = l1 ++ et :: l2, kind et == T & x = (source et)#(fld et)@g].
+Proof.
+case/mapP=>xf H Z; subst x.
+case/tracedObjFieldsP: H=>et[l1][l2][H1]H2 H3; subst xf.
+by exists et, l1, l2.
+Qed.
+
+(******************************************************************)
+(*                 Correctness of expose_eapx                     *)
+(******************************************************************)
+
 
 Theorem expose_apex_sound : 
   {subset actualTargets <= tracedTargets ++ expose_apex}.
 Proof.
-admit.
+move=>x.
+
 Admitted.
 
 End ApexAlgo.
