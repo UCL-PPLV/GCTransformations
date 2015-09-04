@@ -315,18 +315,15 @@ Proof.
 case/replayLogRcons=>h1[g1][H1]H2 M; exists h1, g1; split=>//.
 case: e M H2=>k s' f' o n; rewrite /matchingMA/=; case: k=>//=[_|H2|fnum H2];
 move=>E; move:(condK_true E)=>C.
-
 (* Trace *)
 - case: (condKE (traceG (new:=n)) 
      (fun _ : _ => Some {| hp := h1; gp := g1 |}) C)=>? E2.
   by rewrite E2 in E; case: E=>Z; subst h1; rewrite (proof_irrelevance g g1).
-
 (* Modify *)
 - case: (condKE (modifyG g1 f' (new:=n))
         (fun g' : _ => Some {|hp := modify g1 s' f' n; gp := g'|}) C)=>g' E2.
   rewrite E2 in E; case: E=>Z; subst h. 
   by move: (modify_field g s f C); move/negbTE: H2=>->.
-
 (* Allocate *)
 case: (condKE (allocG g1 fnum f' (new:=n)) (fun g' : _ =>
        Some {| hp := alloc g1 n fnum s' f'; gp := g' |}) C)=>g' E2.
@@ -334,6 +331,16 @@ rewrite E2 in E; case: E=>Z; subst h.
 rewrite eqxx [_ && true]andbC /= in C.
 by move: (alloc_field g s f C); move/negbTE: H2=>->.
 Qed.
+
+Lemma replayLogRconsMA h0 (g0 : graph h0) l e s f h g :
+  executeLog g0 (rcons l e) = Some {| hp := h; gp := g |} ->
+  matchingMA s f e ->
+  exists h' g', 
+    executeLog g0 l = Some {| hp := h'; gp := g' |} /\ 
+    nth null (fields g s) f = new e.
+Proof.
+Admitted.
+
 
 End ExecuteLogs.
 

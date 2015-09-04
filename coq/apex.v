@@ -233,7 +233,10 @@ move/eqP: (eq_refl l'); rewrite {2}/l'=>H6.
 by apply: (Hi _ _ _ _ H5 H3 H6).
 Qed.
 
-(* [TODO] Explain the following lemma *)
+(* The following lemma states that if there is an object in the suffix
+   l2 of the log, which altered the field 'f' of the object 'o', then
+   there is such entry, whose contributed value has actually survived
+   till the final graph g'.  *)
 
 Lemma pickLastMAInSuffix l l1 l2 h' (g' : graph h') o f:
   l = l1 ++ l2 ->
@@ -243,18 +246,33 @@ Lemma pickLastMAInSuffix l l1 l2 h' (g' : graph h') o f:
                     o#f@g' == new e]) l2.
 Proof.
 elim/last_ind: l2 l h' g'=>//ls e Hi l h' g' E H1 H2.
-rewrite !has_rcons in H2 *.
+rewrite !has_rcons in H2 *; rewrite -rcons_cat in E; subst l.
 case X: [&& kindMA (kind e), o == source e & f == fld e]; last first.
 
 (* First case: the last entry not a matching one *)
-move/negbT: X; rewrite negb_and=>/orP; case=>G.
+- move/negbT: X; rewrite negb_and. 
+  case G: (~~ kindMA (kind e))=>//=.
 
-(* (a) It is a T-entry => by induction hypothesis *)
-- have T: kind e == T by case: (kind e) G.
-  rewrite -rcons_cat in E; subst l.
-  case: (replayLogRconsT H1 T)=>H3 H4.
-  move/eqP: T=>T; rewrite T /= in H2.
-  by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2)=>->; rewrite orbC.
+  (* (a) It is a T-entry => by induction hypothesis *) 
+  + move=>_; have T: kind e == T by case: (kind e) G.
+    case: (replayLogRconsT H1 T)=>H3 H4.
+    move/eqP: T=>T; rewrite T /= in H2.
+    by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2)=>->; rewrite orbC.
+
+(* (b) It's and MA-entry with different source/field *)
+- move=>G1; have K : (kindMA (kind e)) by move/negbFE: G.
+  rewrite K (negbTE G1)/= in H2. 
+  have N: ~~ matchingMA o f e by rewrite /matchingMA K.
+  case: (replayLogRconsMA_neg H1 N)=>h1[g1][H3]E.
+  by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2); rewrite E orbC=>->.
+
+(* Now, let us deal with the matching entry, which indeed contributes
+   to the final graph. *)
+apply/orP; left; clear H2 Hi.
+suff S: o # f @ g' == new e by case/andP: X=>->/andP[]->->.
+
+(* TODO: the remaining result should be proven for logs *)
+
 
 
 
