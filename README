@@ -49,6 +49,15 @@ Individual example files can be loaded into the ghci REPL as follows
 
 :load ExampleXY.hs
 
+-- Coq --
+
+Run
+
+make clean; make 
+
+from the folder "Coq". This will build the necessary libraries and the
+GC formalizaion.
+
 
 References
 ==========
