@@ -189,6 +189,9 @@ Definition expose_apex : seq ptr :=
                let f             := (fld pi)    in   
                (kindMA k) && ((o, f) \in wavefront pre)].
 
+(******************************************************************)
+(*    Lemmas about different entries and their configurations     *)
+(******************************************************************)
 
 (* The following lemma roughly corresponds to "pre-safety" of the
    expose_apex procedure. It states that if there is an MA-entry 'ema'
@@ -272,9 +275,9 @@ suff S: o # f @ g' == new e by case/andP: X=>->/andP[]->->.
 by case: (replayLogRconsMA H1 X)=>h1[g1][_]->.
 Qed.
 
-(* The following lemmas that for any T-entry, its captured o.f-value
-   is either in the graph, or there exists an MA-antry *behind* it in
-   the log, which overrides the value of o.f. *)
+(* The following lemma states that for any T-entry, its captured
+   o.f-value is either in the graph, or there exists an MA-antry
+   *behind* it in the log, which overrides the value of o.f. *)
 
 Lemma traced_objects et l1 l2 :
   let o := source et in
@@ -292,8 +295,9 @@ rewrite /matchingMA in H *; rewrite -cat_rcons in E.
 by apply: (pickLastMAInSuffix E epf H).
 Qed.
 
-(*  Need to prove existence of such object in the prefix now ...*)
-
+(******************************************************************)
+(*    finitions, of traced object, fields, and actual objects     *)
+(******************************************************************)
 
 (* Collect all traced objects from the log *)
 Definition tracedEntries : seq LogEntry :=
@@ -311,11 +315,6 @@ Definition tracedTargets :=
 
 Definition actualTargets : seq ptr := 
   [seq (pf.1)#(pf.2)@g | pf <- tracedObjFields].
-
-(* The following theorem states the soundness of the expose_apex
-   procedure: it adds to the tracedTargets a set of pointers, such
-   that the union of the two contains the actual targets by the end of
-   the log execution. *)
 
 Lemma in_split {A : eqType} e (l : seq A): 
   e \in l -> exists l1 l2, l = l1 ++ e :: l2.
@@ -364,8 +363,14 @@ by exists et, l1, l2.
 Qed.
 
 (******************************************************************)
-(*                 Correctness of expose_eapx                     *)
+(*                 Correctness of expose_apex                     *)
 (******************************************************************)
+
+(* The following theorem states the soundness of the expose_apex
+   procedure: it adds to the tracedTargets (retrieved from the
+   T-entries) a set of objects, delivered by 'expose_apex', such that
+   the union of the two contains the *actual targets* of all traced
+   object-fields by the end of the log execution. *)
 
 Theorem expose_apex_sound : 
   {subset actualTargets <= tracedTargets ++ expose_apex}.
@@ -380,5 +385,3 @@ by apply: (expose_apex_fires E D).
 Qed.
 
 End ApexAlgo.
-
-
