@@ -266,21 +266,15 @@ case X: [&& kindMA (kind e), o == source e & f == fld e]; last first.
   case: (replayLogRconsMA_neg H1 N)=>h1[g1][H3]E.
   by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2); rewrite E orbC=>->.
 
-(* Now, let us deal with the matching entry, which indeed contributes
-   to the final graph. *)
+(* Now we have a matching entry, which actually contributes. *)
 apply/orP; left; clear H2 Hi.
 suff S: o # f @ g' == new e by case/andP: X=>->/andP[]->->.
+by case: (replayLogRconsMA H1 X)=>h1[g1][_]->.
+Qed.
 
-(* TODO: the remaining result should be proven for logs *)
-
-
-
-
-Admitted.
-
-(* [TODO] The next step is prove that for any T-entry, its captured
-   o.f-value is either in the graph, or there exists an MA-antry *behind*
-   it in the log, which overrides the value of o.f. *)
+(* The following lemmas that for any T-entry, its captured o.f-value
+   is either in the graph, or there exists an MA-antry *behind* it in
+   the log, which overrides the value of o.f. *)
 
 Lemma traced_objects et l1 l2 :
   let o := source et in
