@@ -325,11 +325,14 @@ elim:l=>//x xs Hi; rewrite inE/=; case/orP.
 by case/Hi=>l1[l2]->; exists (x :: l1), l2. 
 Qed.
 
-Lemma tracedEntriesP e: e \in tracedEntries ->
+Lemma tracedEntriesP e: e \in tracedEntries <->
   kind e == T /\ exists l1 l2, p = l1 ++ e :: l2.
 Proof.
-rewrite /tracedEntries mem_filter=>/andP[->]H; split=>//.
-by apply: in_split.
+split=>[|[H][l1][l2]E]. 
+- rewrite /tracedEntries mem_filter=>/andP[->]H; split=>//.
+  by apply: in_split.
+rewrite /tracedEntries mem_filter H/= E.
+by rewrite mem_cat inE eqxx orbC.
 Qed.
 
 Lemma tracedObjFieldsP sf: sf \in tracedObjFields ->
@@ -340,12 +343,15 @@ case/mapP=>et/tracedEntriesP[H1][l1][l2]H2 H3; subst sf.
 by exists et, l1, l2.
 Qed.
 
-Lemma tracedTargetsP x : x \in tracedTargets ->   
+Lemma tracedTargetsP x : x \in tracedTargets <->   
   exists et l1 l2, 
   [/\ p = l1 ++ et :: l2, kind et == T & x = new et].
 Proof.
-case/mapP=>et/tracedEntriesP[H1][l1][l2]H2 H3; subst x.
-by exists et, l1, l2.
+split=>[|[et][l1][l2][E]K N].
+- case/mapP=>et/tracedEntriesP[H1][l1][l2]H2 H3; subst x.
+  by exists et, l1, l2.
+apply/mapP; exists et=>//.
+by apply/tracedEntriesP; split=>//; exists l1, l2.
 Qed.
 
 Lemma actualTargetsP x : x \in actualTargets ->   
@@ -361,13 +367,17 @@ Qed.
 (*                 Correctness of expose_eapx                     *)
 (******************************************************************)
 
-
 Theorem expose_apex_sound : 
   {subset actualTargets <= tracedTargets ++ expose_apex}.
 Proof.
-move=>x.
-
-Admitted.
+move=>x/actualTargetsP=>[[et]][l1][l2][E]K Z; subst x.
+rewrite mem_cat; apply/orP.
+case: (traced_objects E K); [left | right].
+- by apply/tracedTargetsP; exists et, l1, l2. 
+case/hasP: b=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4.
+rewrite E2 E3 in E4 *;  rewrite E4.
+by apply: (expose_apex_fires E D).
+Qed.
 
 End ApexAlgo.
 
