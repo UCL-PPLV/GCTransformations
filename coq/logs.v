@@ -348,6 +348,10 @@ case/andP: H2=>/eqP Z1/eqP Z2; subst s' f'.
         (fun g' : _ => Some {|hp := modify g1 s f n; gp := g'|}) C)=>g' E2.
   rewrite E2 in E; case: E=>Z; subst h. 
 
+move: (@modify_field _ _ s f n o g s f C).
+rewrite !eqxx/= =>->.
+move: g. rewrite /modify.
+
 
 
 Admitted.

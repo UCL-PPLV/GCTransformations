@@ -148,6 +148,12 @@ move/H; case; do?[move/eqP=>->].
 by move=>G; constructor 3; rewrite inE; apply/orP; right.
 Qed.
 
+Lemma notin_eq (x y : ptr) (h : heap) : 
+      y \notin dom h -> x \in dom h -> x != y.
+Proof.
+by case B: (x==y)=>//; move/eqP: B=>B; subst y; move/negbTE=>->.
+Qed.
+
 (***********************************************************************)
 (* Modify an existing object x's field fld in the heap and return the  *)
 (* pair (new_heap, old_heap_value)                                     *) 
@@ -171,11 +177,16 @@ funciton defined below.
 
 *)
 
+
+(* [TODO]: Probably, I should refactor all these non used so far side
+   conditions into some additional structure. *)
+
 Lemma modifyG h (g : graph h) x fld old new : 
   let: res := modify g x fld new in
     (x \in dom h) && 
     ((new \in dom h) || (new == null)) &&
-    (old \in [predU pred1 null & dom h]) ->  
+    ((fld < size (fields g x)) &&  
+     (old \in [predU pred1 null & dom h])) -> 
   graph res.
 Proof.
 move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
@@ -189,15 +200,14 @@ case/andP: Dy=>V'/orP; case=>[/eqP Z|Dy].
 - subst y; exists (set_nth null (fields g x) fld new).
   rewrite hfreePtUn; last first; [| split=>//].
   + rewrite hvalidPtUn; move/hvalidPt_cond: (V')=>->/=.
-    by move/validR: (V')=>->; rewrite domF inE eq_refl. 
-  
+    by move/validR: (V')=>->; rewrite domF inE eq_refl.   
 - move=>z G; rewrite inE /= inE/=; apply/orP.
   rewrite hdomPtUn inE V'/=.
   move: ((proj2 g) _ Dx)=>[fs][E]G'; rewrite (edgeE E) in G.
   move:(G' z)=>{G'}G'; move/set_nth_elems: G.
   case; first by move=>->; left.
   + move/eqP=>Z; subst new. 
-    case/andP: Dn; case/andP=> _; case/orP; last by move=>->; left.
+    case/andP: Dn; case/andP=> _; case/orP; last by move=>-> _; left.
     by move=>D; right; rewrite domF inE; case X: (x == z).
   move/G'; rewrite inE/=inE=>/orP; case; first by left.
   by rewrite domF inE=>->; right; case X: (x == z).
@@ -223,7 +233,8 @@ Lemma modifyDom h (g : graph h) x fld old new :
   let: res := modify g x fld new in
   (x \in dom h) && 
   ((new \in dom h) || (new == null)) &&
-  (old \in [predU pred1 null & dom h]) ->
+  ((fld < size (fields g x)) &&  
+   (old \in [predU pred1 null & dom h])) ->  
   keys_of h =i keys_of res.
 Proof.
 move=>X; case: (@modifyG h g x fld old new X)=>g' _.
@@ -231,7 +242,6 @@ move: g'; rewrite /modify; do![case: ifP=>//=]=>_ Dx g' z.
 rewrite !keys_dom hdomPtUn !inE g'/= domF inE. 
 by case Y: (x == z)=>//; move/eqP: Y=>Y; subst z; rewrite Dx.
 Qed.
-
 
 (***********************************************************************)
 (* Allocate a new object with the id x (also serves as its pointer)    *)
@@ -282,24 +292,49 @@ Qed.
 Definition alloc h (g: graph h) y fnum x fld := 
   modify (pre_allocG g y fnum) x fld y.
 
+Lemma pre_alloc_fields h (g : graph h) n fnum s: 
+  s != n ->
+  fields (pre_allocG g n fnum) s = fields g s.
+Proof.
+move/negbTE=>N; set g1 :=  pre_allocG g n fnum; move: g1.
+rewrite /pre_alloc; case A: ((n != null) && (n \notin dom h))=>g1; last first.
+- by rewrite (proof_irrelevance _ g g1).
+case: edgeP; last first.
+- move/negbTE.
+  rewrite hdomPtUn inE andbC eq_sym N /= (proj1 g1) andbC/= => /negbT.
+  by move/(graphNoPt g)=>->.
+move=>xs E1 V D _.
+rewrite hfreePtUn2// N/= joinA [s :-> _ \+ _]joinC -joinA in E1.
+by case: (hcancelV V E1)=>_ V' E2; rewrite (@edgeE h g _ _ _ E2).
+Qed.
+
 Lemma allocG h (g: graph h) y fnum x fld old new :            
   let: res := alloc g y fnum x fld in
   (y != null) && (y \notin dom h) &&
   (x \in dom h) && (new == y) &&
-  (old \in [predU pred1 null & dom h]) ->  
+  ((fld < size (fields g x)) &&  
+   (old \in [predU pred1 null & dom h])) ->  
   graph res.
 Proof.
 move=>pf.
 case/andP:(pf)=>/andP[]/andP[]=> pf2 pf3 pf4 pf5.
 suff X: (x \in dom (pre_alloc h y fnum)) &&
         ((y \in dom (pre_alloc h y fnum)) || (y == null)) &&
-        (old \in [predU pred1 null & dom (pre_alloc h y fnum)]).
-- by apply: (modifyG (pre_allocG g y fnum) fld X).
-move:(pre_allocG g y fnum); rewrite /pre_alloc pf2/==>g'.
-case:(g')=>V' _.
-rewrite !inE /= !hdomPtUn !V' !inE !eqxx !(andbC _ true)/=.
-apply/andP; split; first by rewrite pf3 orbC.
-by move: pf5; rewrite !inE /==>/orP; case=>->//; rewrite !(orbC _ true).
+        ((fld < size (fields (pre_allocG g y fnum) x)) &&  
+         (old \in [predU pred1 null & dom (pre_alloc h y fnum)]))
+  by apply: (modifyG X).
+have X: x != y.
+- case B: (x == y)=>//; move/eqP:B=>B; subst y;
+  by case/andP: pf=>/andP[]/andP[]/andP[_]/negbTE=>->.
+move:(pre_allocG g y fnum) (pre_alloc_fields g fnum X). 
+rewrite /pre_alloc pf2/==>g' E.
+suff F: fld < size (fields g' x).
+- rewrite F/=; case:(g')=>V' _.
+  rewrite inE /= !hdomPtUn !V' !inE !eqxx !(andbC _ true)/=.
+  apply/andP; split; first by rewrite pf3 orbC.
+  move: pf5; rewrite !inE /= =>/andP[_]/orP. 
+  by case=>->//; rewrite !(orbC _ true).
+by rewrite E; case/andP: pf5. 
 Qed.
 
 (***********************************************************************)
@@ -333,12 +368,13 @@ Qed.
 Lemma modify_field h1 (g1 : graph h1) s' f' n o
                    (g : graph (modify g1 s' f' n)) s f: 
   (s' \in dom h1) && ((n \in dom h1) || (n == null)) && 
-  (o  \in [predU pred1 null & dom h1]) -> 
+  ((f' < size (fields g1 s')) &&  
+   (o \in [predU pred1 null & dom h1])) -> 
   if (s == s') && (f == f') 
   then nth null (fields g s) f = (if size (fields g1 s) <= f then null else n)
   else nth null (fields g s) f = nth null (fields g1 s) f.
 Proof.
-move=>C; move: (modifyDom g1 f' C)=>K. 
+move=>C; move: (modifyDom C)=>K. 
 case/andP: C=>/andP [H1 H2] _.
 move: g K; rewrite /modify H1; case: ifP=>H3 g K.
 - move: (proof_irrelevance _ g g1)=>Z; subst g1.
@@ -382,10 +418,10 @@ Qed.
 Lemma modify_size h1 (g1 : graph h1) s f n o
                    (g : graph (modify g1 s f n)): 
   (s \in dom h1) && ((n \in dom h1) || (n == null)) && 
-  (o  \in [predU pred1 null & dom h1]) -> 
+  ((f < size (fields g1 s)) && (o \in [predU pred1 null & dom h1])) -> 
   size (fields g s) = size (fields g1 s).
 Proof.
-move=>C; move: (modifyDom g1 f C)=>K. 
+move=>C; move: (modifyDom C)=>K. 
 case/andP: C=>/andP [H1 H2] _.
 move: g K; rewrite /modify H1; case: ifP=>H3 g K.
 - by move: (proof_irrelevance _ g g1)=>Z; subst g1.
@@ -430,29 +466,12 @@ rewrite [n :-> _ \+ _]joinC -joinA in V2 E2.
 by case: (hcancelV V2 E2)=>->.
 Qed.
 
-
-Lemma pre_alloc_fields h (g : graph h) n fnum s: 
-  s != n ->
-  fields (pre_allocG g n fnum) s = fields g s.
-Proof.
-move/negbTE=>N; set g1 :=  pre_allocG g n fnum; move: g1.
-rewrite /pre_alloc; case A: ((n != null) && (n \notin dom h))=>g1; last first.
-- by rewrite (proof_irrelevance _ g g1).
-case: edgeP; last first.
-- move/negbTE.
-  rewrite hdomPtUn inE andbC eq_sym N /= (proj1 g1) andbC/= => /negbT.
-  by move/(graphNoPt g)=>->.
-move=>xs E1 V D _.
-rewrite hfreePtUn2// N/= joinA [s :-> _ \+ _]joinC -joinA in E1.
-by case: (hcancelV V E1)=>_ V' E2; rewrite (@edgeE h g _ _ _ E2).
-Qed.
-
 (*  Relevant changes due to allocation of new objects.  *)
 
 Lemma alloc_field h1 (g1 : graph h1) s' f' fnum n o
                    (g : graph (alloc g1 n fnum s' f')) s f: 
   (n != null) && (n \notin dom h1) && (s' \in dom h1) &&
-  (o \in [predU pred1 null & dom h1]) ->
+  ((f' < size (fields g1 s')) && (o \in [predU pred1 null & dom h1])) ->
   if (s == s') && (f == f') 
   then nth null (fields g s) f = (if size (fields g1 s) <= f then null else n)
   else nth null (fields g s) f = nth null (fields g1 s) f.
@@ -464,25 +483,30 @@ case/andP: (C)=>/andP[C1]C2 C3; move: (@pre_allocDom h1 g1 n fnum C1)=>P.
 have X1: n \in dom (pre_alloc h1 n fnum) by rewrite -keys_dom -P inE eqxx.
 have X2: s' \in dom (pre_alloc h1 n fnum)
          by rewrite -keys_dom -P inE keys_dom C2 orbC.
-have X3: o \in [predU pred1 null & dom (pre_alloc h1 n fnum)].
-- move:C3; rewrite !inE/==>/orP; rewrite !inE/=; case; first by move=>->.
+have X3: (o \in [predU pred1 null & dom (pre_alloc h1 n fnum)]).
+  move:C3; rewrite !inE/==>/andP[_]/orP; rewrite !inE/=. 
+  case; first by move=>->.
   by rewrite -!keys_dom -P inE=>->; rewrite -2!(orbC true).
+have X3' : (f' < size (fields (pre_allocG g1 n fnum) s')).
+  rewrite pre_alloc_fields; first by case/andP:C3.
+  by case/andP:C=>/andP[]/andP[_]A1 A2 _; apply: (@notin_eq _ _ h1)=>//.
 have X4:  (s' \in dom (pre_alloc h1 n fnum)) && 
           ((n \in dom (pre_alloc h1 n fnum)) || (n == null)) && 
-          (o  \in [predU pred1 null & dom (pre_alloc h1 n fnum)]).
-          by rewrite X1 X2 X3.
+          ((f' < size (fields (pre_allocG g1 n fnum) s')) &&
+           (o  \in [predU pred1 null & dom (pre_alloc h1 n fnum)])).
+          by rewrite X1 X2 X3 X3'.
 move: (modify_field g  s f X4); rewrite (pre_alloc_field g1 n fnum s f).
 case: ifP=>//X.
 case/andP: X=>/eqP Z1 /eqP Z2; subst f' s'=>->.
 case/andP: C1=>_/negbTE C1.
 suff N: s != n by rewrite (pre_alloc_fields g1 fnum N).
-by case B: (s == n)=>//; move/eqP: B=>Z; subst s; rewrite C1 in C2. 
+by move/negbT: C1=>C1; apply: (@notin_eq _ _ h1).
 Qed.
 
 Lemma alloc_size h1 (g1 : graph h1) s f fnum n o
                    (g : graph (alloc g1 n fnum s f)):
   (n != null) && (n \notin dom h1) && (s \in dom h1) &&
-  (o \in [predU pred1 null & dom h1]) ->
+  ((f < size (fields g1 s)) && (o \in [predU pred1 null & dom h1])) ->
   size (fields g s) = size (fields g1 s).
 Proof.
 move: g; rewrite /alloc. 
@@ -492,12 +516,17 @@ have X1: n \in dom (pre_alloc h1 n fnum) by rewrite -keys_dom -P inE eqxx.
 have X2: s \in dom (pre_alloc h1 n fnum)
          by rewrite -keys_dom -P inE keys_dom C2 orbC.
 have X3: o \in [predU pred1 null & dom (pre_alloc h1 n fnum)].
-- move:C3; rewrite !inE/==>/orP; rewrite !inE/=; case; first by move=>->.
+  move:C3; rewrite !inE/==>/andP[_]/orP; rewrite !inE/=. 
+  case; first by move=>->.
   by rewrite -!keys_dom -P inE=>->; rewrite -2!(orbC true).
+have X3' : (f < size (fields (pre_allocG g1 n fnum) s)).
+  rewrite pre_alloc_fields; first by case/andP:C3.
+  by case/andP:C=>/andP[]/andP[_]A1 A2 _; apply: (@notin_eq _ _ h1)=>//.
 have X4:  (s \in dom (pre_alloc h1 n fnum)) && 
           ((n \in dom (pre_alloc h1 n fnum)) || (n == null)) && 
-          (o  \in [predU pred1 null & dom (pre_alloc h1 n fnum)]).
-          by rewrite X1 X2 X3.
+          ((f < size (fields (pre_allocG g1 n fnum) s)) &&
+           (o  \in [predU pred1 null & dom (pre_alloc h1 n fnum)])).
+          by rewrite X1 X2 X3 X3'.
 move: (modify_size g X4)=>->; apply/sym.
 suff N: s != n by rewrite (pre_alloc_fields g1 fnum N).
 case B: (s == n)=>//; move/eqP: B=>Z; subst s.
