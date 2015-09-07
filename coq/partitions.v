@@ -9,7 +9,8 @@ Unset Printing Implicit Defensive.
 
 Section Partitions.
 
-(* TODO: Implement a record interface for object space partitions *)
+(* TODO: Implement a record interface for object space partitions and
+   the appropriate lemmas for it. *)
 
 Structure Partition2 := Par2 {
   
