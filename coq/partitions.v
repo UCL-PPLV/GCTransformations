@@ -45,9 +45,11 @@ Definition all_obj_fields_wf l :=
    taking all_obj_fields of an object instead specific traced fields
    in the wavefront.
 
-   Importantly, this is a certified function, as it needs to work only
-   on prefixes of p, hence the type of its argument, which is not just
-   a log, but a prefix of the main log p. *)
+   Importantly, this is a *certified* function, as it needs to work
+   only on prefixes of p (in order to determine the size of the field
+   map for an object being processed correctly), hence the type of its
+   argument, which is not just a log, but a prefix of the main GC log
+   p, for which the expose procedure is run. *)
 
 Definition W_gt (lp : prefix p) := 
    let l := proj1_sig lp in
@@ -70,14 +72,21 @@ move: (trace_fsize epf H2 H5); rewrite H3 H4.
 by rewrite mem_iota add0n. 
 Qed.
 
-(* TODO: explain the purpose *)
+(* W_gt is an underapproximation the set of object fields' values
+   behind the wavefront. Therefore, it over-approximates the set of
+   object fields ahead of the wavefront. We can show that it returns a
+   subset of all objects in the wavefront, as its OL-part only reports
+   the objects whose *all* fields were traced in the wavefront. *)
 
 Definition W_lt (lp : prefix p) := 
    let l := proj1_sig lp in
    let wfl := [seq ef | ef <- wavefront l & FL ef.1] in
    let wol := [seq ef | ef <- wavefront l & 
-                        (OL ef.1) && (ef \in all_obj_fields_wf l)] in
-       wfl ++ wol.
+                        (OL ef.1) && 
+                        (*  All fields of this object are in wavefron *)
+                        all (fun e => e \in wavefront l)
+                            (all_obj_fields_wf l)]
+   in  wfl ++ wol.
 
 End WavefrontDimension.
 
