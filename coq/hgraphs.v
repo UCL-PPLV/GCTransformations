@@ -6,6 +6,12 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
 
+
+(*******************************************************************************)
+(* Implementation of object graphs and graph-manipulating machinery,
+   such as allocation and modification. *)
+(*******************************************************************************)
+
 Section GraphDefinitions.
 
 Variable node : ordType. (* type of nodes *)

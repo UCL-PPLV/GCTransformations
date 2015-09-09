@@ -1,4 +1,4 @@
-MODULES := hgraphs logs apex
+MODULES := hgraphs logs wavefronts apex
 
 RELEASE := $(MODULES:%=%.v) Makefile Makefile.build
 

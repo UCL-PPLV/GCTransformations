@@ -8,7 +8,16 @@ Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
 
 
-(* Implementation of the mutator/collector logs and their execution *)
+(*******************************************************************************)
+(* Definitions of GC logs and entries with a number of proved facts
+   about the effects different entries (e.g., of M/A-type) have on the
+   execution of the log. In essence, these lemmas tie the "semantic"
+   of the heap mutation and tracing (expressed in terms of
+   heap-graphs) with the "syntactic" way of reasoning about it in
+   terms of GC logs. *)
+(*******************************************************************************)
+
+
 Section GCLog.
 
 Inductive ActionKind : Set := T | M | A of nat.
@@ -72,16 +81,21 @@ Definition ptr_set := ptrmap_pcm_Encoded unit_st_Encoded.
 
 End GCLog.
 
+(* Dereferencing an object field *)
+
+Notation "o '#' f '@' g" := (nth null (fields g o) f)
+  (at level 43, left associativity).
+
+
+
 Section ExecuteLogs.
 
-(* 
+(* The following function boolean condition into a certificate of type
+   P via the function g, and then uses the obtained certificate in the
+   continuation f. If the boolean check is failed, the result is
+   undefined, hence both the condK combinator and its argument f have
+   the result type option.  *)
 
-It reflect boolean condition into a certificate of type P via the
-function g, and then uses the obtained certificate in the continuation
-f. If the boolean check is failed, the result is undefined, hence both
-the condK combinator and its argument f have the result type option.
-
-*)
 Definition condK P R (c : bool) 
   (g : is_true c -> P) (f : P -> option R) := 
   (if c as z return _ = z -> _ 
@@ -260,23 +274,8 @@ by case:er H=>h g /replayLogCat.
 Qed.
 
 
-(* The following is a certified function extracting an intermediate
-   result.  Unfortunately, we cannot really define it, as it would
-   require us to refactor all the facts about replaying to use subset
-   types. See logs-executable.v for that implementation. *)
-
-
-(* Definition replayLog h0 (g0: graph h0) l er *)
-(*     (pf : executeLog g0 l = Some er) (n : nat) : ExecuteResult :=  *)
-(*   match replayLogP pf n with exist er _ => er end. *)
-
-(* Theorem replayLogReplays h0 (g0: graph h0) l er *)
-(*     (pf : executeLog g0 l = Some er) (n : nat) : *)
-(*   executeLog g0 (take n l) = Some (replayLog pf n).  *)
-(* Proof. by rewrite /replayLog; case: (replayLogLm pf n). Qed. *)
-
 (*******************************************************************************)
-(*                Important lemmas about log executions                        *)
+(*                Entry-specific lemmas about log executions                   *)
 (*******************************************************************************)
 
 
@@ -360,12 +359,167 @@ move: (alloc_field g s f C); rewrite !eqxx/= leqNgt =>->.
 by case/andP: C=>_/andP[->].
 Qed.
 
+
+(*******************************************************************************)
+(*            Lemmas about different entries and their configurations          *)
+(*******************************************************************************)
+
+(* Initial graph an heap *)
+Variables (h0 : heap) (g0: graph h0).
+
+(* [trace_pure]: If there is no matching MA-entries for the T-entry
+   'et' in the corresponding suffix of 'l', then et's recorded value
+   survives till the final graph. *)
+
+Lemma trace_pure l h' (g' : graph h') et l1 l2: 
+  kind et == T -> 
+  executeLog g0 l = Some {| hp := h'; gp := g' |} ->
+  ~~ has (matchingMA (source et) (fld et)) l2 -> l = l1 ++ et :: l2 -> 
+  source et # fld et @ g' = new et.
+Proof.
+move=>Kt; elim/last_ind:l2 l l1 h' g'=>
+  [l l1 h' g' pf _|l2 e Hi l l1 h' g' H1 H2].
+- by rewrite cats1=>Z; subst l; case: (replayLogRconsT pf Kt).
+rewrite has_rcons negb_or in H2; case/andP: H2=>H2 H3.
+rewrite -cats1 -cat_rcons catA cats1 cat_rcons. 
+set l' := (l1 ++ et :: l2)=>H4; subst l.
+case: (replayLogRconsMA_neg H1 H2)=>h1[g1][H5]E; rewrite E.
+move/eqP: (eq_refl l'); rewrite {2}/l'=>H6.
+by apply: (Hi _ _ _ _ H5 H3 H6).
+Qed.
+
+(* The following lemma states that if there is an object in the suffix
+   l2 of the log, which altered the field 'f' of the object 'o', then
+   there is such entry, whose contributed value has actually survived
+   till the final graph g'.  *)
+
+Lemma pickLastMAInSuffix l l1 l2 h' (g' : graph h') o f:
+  l = l1 ++ l2 ->
+  executeLog g0 l = Some {| hp := h'; gp := g' |} ->
+  has (fun e => [&& kindMA (kind e), o == source e & f == fld e]) l2 ->
+  has (fun e => [&& kindMA (kind e), o == source e,  f == fld e & 
+                    o#f@g' == new e]) l2.
+Proof.
+elim/last_ind: l2 l h' g'=>//ls e Hi l h' g' E H1 H2.
+rewrite !has_rcons in H2 *; rewrite -rcons_cat in E; subst l.
+case X: [&& kindMA (kind e), o == source e & f == fld e]; last first.
+
+(* First case: the last entry not a matching one *)
+- move/negbT: X; rewrite negb_and. 
+  case G: (~~ kindMA (kind e))=>//=.
+
+  (* (a) It is a T-entry => by induction hypothesis *) 
+  + move=>_; have T: kind e == T by case: (kind e) G.
+    case: (replayLogRconsT H1 T)=>H3 H4.
+    move/eqP: T=>T; rewrite T /= in H2.
+    by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2)=>->; rewrite orbC.
+
+(* (b) It's and MA-entry with different source/field *)
+- move=>G1; have K : (kindMA (kind e)) by move/negbFE: G.
+  rewrite K (negbTE G1)/= in H2. 
+  have N: ~~ matchingMA o f e by rewrite /matchingMA K.
+  case: (replayLogRconsMA_neg H1 N)=>h1[g1][H3]E.
+  by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2); rewrite E orbC=>->.
+
+(* Now we have a matching entry, which actually contributes. *)
+apply/orP; left; clear H2 Hi.
+suff S: o # f @ g' == new e by case/andP: X=>->/andP[]->->.
+by case: (replayLogRconsMA H1 X)=>h1[g1][_]->.
+Qed.
+
+(* The following lemma states that for any T-entry, its captured
+   o.f-value is either in the graph, or there exists an MA-antry
+   *behind* it in the log, which overrides the value of o.f. *)
+
+Lemma traced_objects h (g : graph h) l
+                     (epf : executeLog g0 l = Some (ExRes g)) et l1 l2 :
+  let o := source et in
+  let f := fld    et in
+  let n := new    et in
+  l = l1 ++ et :: l2 -> kind et == T -> 
+  o#f@g = n \/
+  has (fun e => [&& kindMA (kind e), o == source e, f == fld e & 
+                    o#f@g == new e]) l2.
+Proof.
+move=>/= E Kt.
+case H: (has (matchingMA (source et) (fld et)) l2); [right|left]; last first.
+- by apply: (@trace_pure l h g et l1 l2 Kt epf)=>//; apply/negbT.
+rewrite /matchingMA in H *; rewrite -cat_rcons in E. 
+by apply: (pickLastMAInSuffix E epf H).
+Qed.
+
+(******************************************************************)
+(*   Definitions of traced object, fields, and actual objects     *)
+(******************************************************************)
+
+(* A collector log p will all unique entires *)
+Variables  (p : log).
+
+(* Final heap and graph for the log p with the corresponding certificate epf *)
+Variables (h : heap) (g: graph h).
+Variable (epf : executeLog g0 p = Some (ExRes g)).
+
+(* Collect all traced objects from the log *)
+Definition tracedEntries : seq LogEntry :=
+  [seq pi <- p | (kind pi) == T]. 
+
+Definition tracedObjFields := 
+  [seq (source et, fld et) | et <- tracedEntries].
+
+Definition tracedTargets :=
+  [seq new et | et <- tracedEntries].
+
+(* Next, we define the set of actual objects in the final heap-graph
+   with respect to traced objects. *)
+
+Definition actualTargets : seq ptr := 
+  [seq (pf.1)#(pf.2)@g | pf <- tracedObjFields].
+
+Lemma in_split {A : eqType} e (l : seq A): 
+  e \in l -> exists l1 l2, l = l1 ++ e :: l2.
+Proof.
+elim:l=>//x xs Hi; rewrite inE/=; case/orP.
+- by move/eqP=>Z; subst x; exists [::], xs; rewrite cat0s.
+by case/Hi=>l1[l2]->; exists (x :: l1), l2. 
+Qed.
+
+Lemma tracedEntriesP e: e \in tracedEntries <->
+  kind e == T /\ exists l1 l2, p = l1 ++ e :: l2.
+Proof.
+split=>[|[H][l1][l2]E]. 
+- rewrite /tracedEntries mem_filter=>/andP[->]H; split=>//.
+  by apply: in_split.
+rewrite /tracedEntries mem_filter H/= E.
+by rewrite mem_cat inE eqxx orbC.
+Qed.
+
+Lemma tracedObjFieldsP sf: sf \in tracedObjFields ->
+  exists et l1 l2, 
+  [/\ (source et, fld et) = sf, p = l1 ++ et :: l2 & kind et == T].
+Proof.
+case/mapP=>et/tracedEntriesP[H1][l1][l2]H2 H3; subst sf.
+by exists et, l1, l2.
+Qed.
+
+Lemma tracedTargetsP x : x \in tracedTargets <->   
+  exists et l1 l2, 
+  [/\ p = l1 ++ et :: l2, kind et == T & x = new et].
+Proof.
+split=>[|[et][l1][l2][E]K N].
+- case/mapP=>et/tracedEntriesP[H1][l1][l2]H2 H3; subst x.
+  by exists et, l1, l2.
+apply/mapP; exists et=>//.
+by apply/tracedEntriesP; split=>//; exists l1, l2.
+Qed.
+
+Lemma actualTargetsP x : x \in actualTargets ->   
+  exists et l1 l2, 
+  [/\ p = l1 ++ et :: l2, kind et == T & x = (source et)#(fld et)@g].
+Proof.
+case/mapP=>xf H Z; subst x.
+case/tracedObjFieldsP: H=>et[l1][l2][H1]H2 H3; subst xf.
+by exists et, l1, l2.
+Qed.
+
 End ExecuteLogs.
 
-Section Wavefronts.
-
-(* Definition of a wavefront *)
-Definition wavefront (p : log) := 
-  [seq (source pi, fld pi) | pi <- p & kind pi == T].
-
-End Wavefronts.
