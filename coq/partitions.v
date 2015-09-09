@@ -2,7 +2,7 @@ Require Import Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat.
 Require Import Ssreflect.eqtype Ssreflect.ssrfun Ssreflect.seq.
 Require Import MathComp.path.
 Require Import Eqdep pred prelude idynamic ordtype pcm finmap unionmap heap coding. 
-Require Import hgraphs logs wavefronts.
+Require Import hgraphs logs wavefronts apex.
 Set Implicit Arguments. 
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
@@ -71,6 +71,15 @@ rewrite H1 -catA cat_cons=>H5.
 move: (trace_fsize epf H2 H5); rewrite H3 H4.
 by rewrite mem_iota add0n. 
 Qed.
+
+Variable e0 : LogEntry.
+
+(* expose_apex is sound with W_gt for *any* wavefront partition *)
+
+Corollary w_gt_expose_apex_sound : 
+  {subset actualTargets p g
+            <= tracedTargets p ++ expose_apex e0 g W_gt}.
+Proof. by apply: (expose_apex_sound e0 epf w_gt_approx). Qed.
 
 (* W_gt is an underapproximation the set of object fields' values
    behind the wavefront. Therefore, it over-approximates the set of

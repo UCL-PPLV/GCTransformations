@@ -113,7 +113,7 @@ Proof. done. Qed.
 
 (* Indeed, this is trivially sound  *)
 
-Lemma vanilla_expose_apex_sound : 
+Corollary vanilla_expose_apex_sound : 
   {subset actualTargets p g
             <= tracedTargets p ++ expose_apex e0 g wf_plain}.
 Proof. by apply: (expose_apex_sound e0 epf wf_plain_sound). Qed.
