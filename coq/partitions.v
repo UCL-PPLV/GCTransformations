@@ -48,9 +48,22 @@ Definition all_obj_fields_wf l :=
    in the wavefront. *)
 
 Definition W_gt := 
-   let wfl := [seq ef | ef <- wavefront p         & FL ef.1] in
-   let wol := [seq ef | ef <- all_obj_fields_wf p & OL ef.1] in
+   let wfl := [seq ef <- wavefront p         | FL ef.1] in
+   let wol := [seq ef <- all_obj_fields_wf p | OL ef.1] in
        wfl ++ wol.
+
+Lemma w_gt_approx : {subset wavefront p <= W_gt}.
+Proof.
+move=>o. rewrite /W_gt mem_cat !mem_filter.
+case X: (FL o.1)=>//=H; first by rewrite H.
+move: (pr_coh wp (o.1)); rewrite X=>/=->/=.
+apply/flatten_mapP; exists o=>//.
+apply/mapP; exists o.2; last by rewrite -surjective_pairing.
+case: (wavefront_trace H)=>e[l1][l2][H1]H2 H3 H4.
+move: (trace_fsize epf H2 H1); rewrite H3 H4.
+by rewrite mem_iota add0n. 
+Qed.
+
 
 (* TODO *)
 

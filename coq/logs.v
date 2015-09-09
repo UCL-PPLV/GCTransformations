@@ -254,6 +254,33 @@ rewrite -rcons_cat in H.
 by case/replayLogRcons: H=>h1[g1][]/Hi.
 Qed.
 
+(* The size of fields in an existing object doesn't change *)
+
+Lemma fsize_preserv h0 (g0: graph h0) l1 l2 h g h' g' o:
+  o \in dom h' ->
+  executeLog g0 l1 = Some (@ExRes h' g') ->
+  executeLog g0 (l1 ++ l2) = Some (@ExRes h g) ->
+  size (fields g' o) = size (fields g o) /\
+  o \in dom h.
+Proof.
+move=>D H1; elim/last_ind:l2 h g=>[h g|l2 e Hi h g].
+- by rewrite cats0 H1; case=>Z; subst h'; rewrite (proof_irrelevance g' g).
+rewrite -rcons_cat=>/replayLogRcons[h1][g1][/(Hi h1 g1)][->]{Hi g' H1 D h'}D. 
+case: e=>k s f o' nw; case: k=>//=[||n]/=E; move:(condK_true E)=> C.
+- case: (condKE (traceG (new:=nw)) 
+        (fun _  => Some {| hp := h1; gp := g1 |}) C)=>? E2.
+  by rewrite E2 in E; case: E=>Z; subst h1; rewrite (proof_irrelevance g1 g).
+- case: (condKE (modifyG (new:=nw)) 
+        (fun pf => Some {| hp := _; gp := pf |}) C)=>[pg E2].
+  rewrite E2 in E; case: E=>E{E2 pg}; subst h.
+  by rewrite (modify_size g o C) -(modifyDom g1 s f nw).
+case: (condKE (allocG n (new:=nw)) 
+      (fun g'=> Some {| hp := _; gp := g' |}) C)=>g' E2. 
+rewrite E2 in E; case: E=>Z; subst h.      
+rewrite eqxx /= -(andbC true)/= in C.
+rewrite (alloc_size g C D); split=>//.
+by move/(allocDom g1 nw n s f): D.
+Qed.
 
 (*******************************************************************************)
 (* [Replaying logs]: the following certified definition is very
@@ -284,8 +311,9 @@ Qed.
 Lemma replayLogRconsT h0 (g0 : graph h0) l e h g :
   executeLog g0 (rcons l e) = Some {| hp := h; gp := g |} ->
   kind e == T ->
-  executeLog g0 l = Some {| hp := h; gp := g |} /\ 
-  nth null (fields g (source e)) (fld e) = (new e).
+  [/\ executeLog g0 l = Some {| hp := h; gp := g |}, 
+      nth null (fields g (source e)) (fld e) = (new e) &
+      fld e < size (fields g (source e))].
 Proof.
 case: e=>k s f o nw; case: k=>//= H2 _.
 move/replayLogRcons: H2=>[h1][g1][H3]/= E.
@@ -295,7 +323,8 @@ case: (condKE (traceG (new:=nw))
 rewrite E2 in E. 
 case: E=>Z; subst h1.
 rewrite (proof_irrelevance g g1).
-by case/andP: (C)=>/andP=>[[G]]/eqP Z1 /eqP Z2; subst nw o. 
+case/andP: (C)=>/andP=>[[G]]/eqP Z1 /andP [G'] /eqP Z2.
+by subst nw o.  
 Qed.
 
 (* An entry that can affect the value of s.f in the final graph. *)
@@ -374,7 +403,8 @@ Variables (h0 : heap) (g0: graph h0).
 Lemma trace_pure l h' (g' : graph h') et l1 l2: 
   kind et == T -> 
   executeLog g0 l = Some {| hp := h'; gp := g' |} ->
-  ~~ has (matchingMA (source et) (fld et)) l2 -> l = l1 ++ et :: l2 -> 
+  ~~ has (matchingMA (source et) (fld et)) l2 -> 
+  l = l1 ++ et :: l2 -> 
   source et # fld et @ g' = new et.
 Proof.
 move=>Kt; elim/last_ind:l2 l l1 h' g'=>
@@ -410,7 +440,7 @@ case X: [&& kindMA (kind e), o == source e & f == fld e]; last first.
 
   (* (a) It is a T-entry => by induction hypothesis *) 
   + move=>_; have T: kind e == T by case: (kind e) G.
-    case: (replayLogRconsT H1 T)=>H3 H4.
+    case: (replayLogRconsT H1 T)=>H3 H4 H4'.
     move/eqP: T=>T; rewrite T /= in H2.
     by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2)=>->; rewrite orbC.
 
@@ -447,6 +477,25 @@ case H: (has (matchingMA (source et) (fld et)) l2); [right|left]; last first.
 rewrite /matchingMA in H *; rewrite -cat_rcons in E. 
 by apply: (pickLastMAInSuffix E epf H).
 Qed.
+
+Lemma trace_fsize l h' (g' : graph h') et l1 l2: 
+  executeLog g0 l = Some {| hp := h'; gp := g' |} ->
+  kind et == T -> 
+  l = l1 ++ et :: l2 -> 
+  fld et < size (fields g' (source et)).
+Proof.
+move=>H Kt; rewrite -cat_rcons=>E; subst l.
+case: (replayLogCat H)=>[[h1 g1]]H1.
+suff D: source et \in dom h1 /\ fld et < size (fields g1 (source et)).
+by case: D=> D1 D2; case: (fsize_preserv D1 H1 H)=><- _.
+clear H h' g' l2; case: et Kt H1=>k s f o nw; case: k=>//= _. 
+case/replayLogRcons=>/=h[g][H1] E; move:(condK_true E)=> C.
+case: (condKE (traceG (new:=nw)) 
+      (fun _ : _ => Some {| hp := h; gp := g |}) C)=>? E2.
+rewrite E2 in E; case: E=>Z {E2}; subst h1; rewrite (proof_irrelevance g1 g).
+by case/andP: C=>/andP[]->_/andP[->].
+Qed.
+
 
 (******************************************************************)
 (*   Definitions of traced object, fields, and actual objects     *)

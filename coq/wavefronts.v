@@ -126,6 +126,14 @@ exists i, (take i l); split=>//.
 by apply/mapP; exists et=>//; rewrite mem_filter T. 
 Qed.
 
+Lemma wavefront_trace l o : o \in wavefront l ->
+   exists (e : LogEntry) (l1 l2 : seq LogEntry),
+     [/\ l = l1 ++ e :: l2, kind e == T, source e = o.1 & fld e = o.2].
+Proof.
+case/mapP=>e; rewrite mem_filter=>/andP[H1].
+by case/in_split=>l1[l2][E]->/=; exists e, l1, l2.
+Qed.
+
 End Wavefronts.
 
 
