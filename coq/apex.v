@@ -31,6 +31,13 @@ Variable (epf : executeLog g0 p = Some (ExRes g)).
 (*    Apex procedure for exposing reachable objects in the graph  *)
 (******************************************************************)
 
+(* A dependent type of prefixes of p *)
+Definition prefix (l : log) := {l1 | exists n, l1 = take n l}.
+
+(* A candidate for approximating wavefront *)
+Variable wf_approx : prefix p -> seq (ptr * nat).
+Hypothesis wfp : forall lp, {subset wavefront (proj1_sig lp) <= wf_approx lp}. 
+
 Definition expose_apex : seq ptr := 
   [seq let pi := pe.1.2    in
        let o  := source pi in
@@ -40,7 +47,7 @@ Definition expose_apex : seq ptr :=
                let k             := (kind pi)   in   
                let o             := (source pi) in
                let f             := (fld pi)    in   
-               (kindMA k) && ((o, f) \in wavefront pre)].
+               (kindMA k) && ((o, f) \in wf_approx pre)].
 
 (* The following lemma roughly corresponds to "pre-safety" of the
    expose_apex procedure. It states that if there is an MA-entry 'ema'
@@ -59,9 +66,10 @@ Lemma expose_apex_fires l1 l2 et ema :
   n \in expose_apex.
 Proof.  
 move=>/=E D Kma Kt S F N.
-case: (prefix_wavefront e0 D E Kt)=>i[pre][H1] H2.
-apply/mapP; exists (pre, ema, i)=>//=.
-by rewrite mem_filter Kma/= -S -F H2 H1.
+case: (prefix_wavefront e0 D E Kt)=>i[pre][H1]/wfp H2.
+apply/mapP'; exists (pre, ema, i)=>//=.
+split; last by rewrite N.
+by apply/mem_filter'; rewrite Kma/= -S -F H2.
 Qed.
 
 (******************************************************************)
@@ -87,3 +95,27 @@ by apply: (expose_apex_fires E D).
 Qed.
 
 End ApexAlgo.
+
+
+Section ApexVanilla.
+
+(* Runnin Apex with the defalut wavefront function *)
+
+Variable e0 : LogEntry.
+Variables (h0 : heap) (g0: graph h0) (p : log).
+Variables (h : heap) (g: graph h).
+Variable (epf : executeLog g0 p = Some (ExRes g)).
+
+Definition wf_plain (lp : prefix p) := wavefront (proj1_sig lp).
+
+Lemma wf_plain_sound lp : {subset wavefront (proj1_sig lp) <= wf_plain lp}.
+Proof. done. Qed.
+
+(* Indeed, this is trivially sound  *)
+
+Lemma vanilla_expose_apex_sound : 
+  {subset actualTargets p g
+            <= tracedTargets p ++ expose_apex e0 g wf_plain}.
+Proof. by apply: (expose_apex_sound e0 epf wf_plain_sound). Qed.
+
+End ApexVanilla.

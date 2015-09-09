@@ -3,7 +3,7 @@ Require Import Ssreflect.eqtype Ssreflect.ssrfun Ssreflect.seq.
 Require Import MathComp.path.
 Require Import Eqdep pred prelude idynamic ordtype pcm finmap unionmap heap coding. 
 Require Import hgraphs logs wavefronts.
-Set Implicit Arguments.
+Set Implicit Arguments. 
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
 
@@ -35,8 +35,6 @@ Variable wp : par2.
 Notation FL := (pr1 wp).
 Notation OL := (pr2 wp).
 
-Eval compute in iota 0 3.
-
 Definition all_obj_fields (e : ptr) := 
     [seq (e, f) | f <- iota 0 (size (fields g e))]. 
 
@@ -45,32 +43,41 @@ Definition all_obj_fields_wf l :=
 
 (* W_gt approximates the set of object fields behind the wavefront by
    taking all_obj_fields of an object instead specific traced fields
-   in the wavefront. *)
+   in the wavefront.
 
-Definition W_gt := 
-   let wfl := [seq ef <- wavefront p         | FL ef.1] in
-   let wol := [seq ef <- all_obj_fields_wf p | OL ef.1] in
+   Importantly, this is a certified function, as it needs to work only
+   on prefixes of p, hence the type of its argument, which is not just
+   a log, but a prefix of the main log p. *)
+
+Definition W_gt (lp : prefix p) := 
+   let l := proj1_sig lp in
+   let wfl := [seq ef <- wavefront l         | FL ef.1] in
+   let wol := [seq ef <- all_obj_fields_wf l | OL ef.1] in
        wfl ++ wol.
 
-Lemma w_gt_approx : {subset wavefront p <= W_gt}.
+Lemma w_gt_approx lp : {subset wavefront (proj1_sig lp) <= W_gt lp}.
 Proof.
-move=>o. rewrite /W_gt mem_cat !mem_filter.
+case: lp=>l[n]pf/=.
+move=>o; rewrite /W_gt mem_cat !mem_filter.
 case X: (FL o.1)=>//=H; first by rewrite H.
 move: (pr_coh wp (o.1)); rewrite X=>/=->/=.
 apply/flatten_mapP; exists o=>//.
 apply/mapP; exists o.2; last by rewrite -surjective_pairing.
 case: (wavefront_trace H)=>e[l1][l2][H1]H2 H3 H4.
-move: (trace_fsize epf H2 H1); rewrite H3 H4.
+move: (cat_take_drop n p); rewrite -pf=>/sym.
+rewrite H1 -catA cat_cons=>H5.
+move: (trace_fsize epf H2 H5); rewrite H3 H4.
 by rewrite mem_iota add0n. 
 Qed.
 
+(* TODO: explain the purpose *)
 
-(* TODO *)
-
-Definition W_lt := 
-   let wfl := [seq ef | ef <- wavefront p & FL ef.1] in
-   let wol := [seq ef | ef <- wavefront p & 
-                        (OL ef.1) && (ef \in all_obj_fields_wf p)] in
+Definition W_lt (lp : prefix p) := 
+   let l := proj1_sig lp in
+   let wfl := [seq ef | ef <- wavefront l & FL ef.1] in
+   let wol := [seq ef | ef <- wavefront l & 
+                        (OL ef.1) && (ef \in all_obj_fields_wf l)] in
        wfl ++ wol.
 
 End WavefrontDimension.
+
