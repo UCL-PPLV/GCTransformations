@@ -79,14 +79,14 @@ by apply/mem_filter'; rewrite !H1 -!(andbC true) K2/= -E2 -E3 G2; split.
 Qed.
 
 Definition M_plus o : nat := size (undup 
-     [seq let pre := proj1_sig pe.1.1 in pre
+     [seq let pi := pe.1.2 in pi
                   | pe <- prefixes e0 p &
                     let: (pre, pi, _) := pe in   
                     [&& (kindMA (kind pi)), (new pi) == o, 
                     ((source pi, fld pi) \in w_gt pre) & LR (source pi)]]).
 
 Definition M_minus o : nat := size (undup 
-     [seq let pre := proj1_sig pe.1.1 in pre
+     [seq let pi := pe.1.2 in pi
                   | pe <- prefixes e0 p &
                     let: (pre, pi, _) := pe in   
                     [&& (kindMA (kind pi)), (new pi) == o, 
@@ -127,13 +127,14 @@ rewrite E2 ?E3 in H2 E4.
    (M_minus makes sure of that thanks to the all-check in the
    definition of W_lt).
 
-   THe actual explanation from the paper is as follows. *Mutator
-   Count:* The mutator count is the number of pointers to an object
-   from object fields behind the wavefront. This quantity is computed
-   with respect to a given wavefront. We assume that some objects in
-   the heap are rescanned objects that do not affect the mutator
-   count. The mutator count computation is therefore parameterized by
-   a set of objects LR from which the count should be computed.
+   THe actual explanation of this difference (dubbed Mutator Count)
+   from the paper is as follows. The mutator count is the number of
+   pointers to an object from object fields behind the wavefront. This
+   quantity is computed with respect to a given wavefront. We assume
+   that some objects in the heap are rescanned objects (SR) that do
+   not affect the mutator count. The mutator count computation is
+   therefore parameterized by a set of objects LR from which the count
+   should be computed.
 
  *)
 
