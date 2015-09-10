@@ -7,31 +7,34 @@ of concurrent garbage collectors by Vechev et al. [VYB06].
 
 The structure of the project:
 
-- ./haskell -- a folder with the Haskell prototype of parametrised
+- ./Haskell -- a folder with the Haskell prototype of parametrised
   expose functions. Different dimensions are implemented as type
   classes with mutually-disjoint functions, specifying the
   corresponding partitions.
-   |
    
 ---- GCDerivation.hs -- this file contains implementation of the main
      GC machinery concerning parametrized instances of the explore
      function. The same file also contains definitions of all the
      dimension type classes.
-   | 
+
 ---- ExampleXY.hs -- example files, corresponding to the case studies
      labelled as X.Y in the [VYB06] paper. The comments after the
      expressions describe the results obtained by evaluating them.
 
-- ./coq -- a Coq formalization of the collector's exposing functions
+- ./Coq -- a Coq formalization of the collector's exposing functions
   and their correctness wrt. graph reachability
-   |
----- hgaphs.v -- a theory of object graphs, including facts about
-     allocation/mutation.
-   |
----- logs.v -- implementation of collector/mutator logs
-   |
----- apex.v -- implementation of the "apex" expose procedure
 
+---- Hgaphs.v -- a theory of object graphs, including facts about
+     allocation/mutation.
+
+---- Logs.v -- implementation of collector/mutator logs
+
+---- Wavefronts.v -- A library for wavefronts
+
+---- Apex.v -- implementation of the "apex" expose procedure
+
+---- WavefrontDimension.v -- Parametrizing the expose over the
+     wavefront dimension.
 
 
 Building the project
@@ -43,7 +46,7 @@ Run
 
 make clean; make
 
-from the folder "haskell" to compile the project.
+from the folder "Haskell" to compile the project.
 
 Individual example files can be loaded into the ghci REPL as follows
 
@@ -51,7 +54,7 @@ Individual example files can be loaded into the ghci REPL as follows
 
 -- Coq --
 
-Run
+Run 
 
 make clean; make 
 

@@ -1,4 +1,4 @@
-MODULES := hgraphs logs wavefronts apex partitions WavefrontDimension PolicyDimension
+MODULES := Hgraphs Logs Wavefronts Apex Partitions WavefrontDimension PolicyDimension
 
 RELEASE := $(MODULES:%=%.v) Makefile Makefile.build
 

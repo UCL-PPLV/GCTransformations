@@ -2,7 +2,7 @@ Require Import Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat.
 Require Import Ssreflect.eqtype Ssreflect.ssrfun Ssreflect.seq.
 Require Import MathComp.path.
 Require Import Eqdep pred idynamic ordtype pcm finmap unionmap heap coding. 
-Require Import hgraphs logs.
+Require Import Hgraphs Logs.
 Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
