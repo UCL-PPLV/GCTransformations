@@ -127,6 +127,14 @@ rewrite E2 ?E3 in H2 E4.
    (M_minus makes sure of that thanks to the all-check in the
    definition of W_lt).
 
+   THe actual explanation from the paper is as follows. *Mutator
+   Count:* The mutator count is the number of pointers to an object
+   from object fields behind the wavefront. This quantity is computed
+   with respect to a given wavefront. We assume that some objects in
+   the heap are rescanned objects that do not affect the mutator
+   count. The mutator count computation is therefore parameterized by
+   a set of objects LR from which the count should be computed.
+
  *)
 
 Admitted.
