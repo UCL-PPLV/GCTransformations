@@ -81,17 +81,16 @@ Qed.
 Definition M_plus o : nat := size (undup 
      [seq let pre := proj1_sig pe.1.1 in pre
                   | pe <- prefixes e0 p &
-                   let: (pre, pi, _) := pe in   
-                   [&& (kindMA (kind pi)), (new pi) == o, 
-                   ((source pi, fld pi) \in w_gt pre) & LR (source pi)]]).
-
+                    let: (pre, pi, _) := pe in   
+                    [&& (kindMA (kind pi)), (new pi) == o, 
+                    ((source pi, fld pi) \in w_gt pre) & LR (source pi)]]).
 
 Definition M_minus o : nat := size (undup 
      [seq let pre := proj1_sig pe.1.1 in pre
-                 | pe <- prefixes e0 p &
-                   let: (pre, pi, _) := pe in   
-                   [&& (kindMA (kind pi)), (new pi) == o, 
-                   ((source pi, fld pi) \in w_lt pre) & LR (source pi)]]).
+                  | pe <- prefixes e0 p &
+                    let: (pre, pi, _) := pe in   
+                    [&& (kindMA (kind pi)), (new pi) == o, 
+                    ((source pi, fld pi) \in w_lt pre) & LR (source pi)]]).
 
 Definition expose_c : seq ptr := 
      [seq new pi | pi <- p &
