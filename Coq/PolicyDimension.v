@@ -78,19 +78,24 @@ apply/mapP'; exists (pre, ema, i)=>//=; split=>//.
 by apply/mem_filter'; rewrite !H1 -!(andbC true) K2/= -E2 -E3 G2; split.
 Qed.
 
-Definition M_plus o : nat := size (undup 
+(* A number of references from behind of wavefront to o, obtained as a
+   result of mutation. *)
+Definition M_plus o : nat := size
      [seq let pi := pe.1.2 in pi
                   | pe <- prefixes e0 p &
                     let: (pre, pi, _) := pe in   
                     [&& (kindMA (kind pi)), (new pi) == o, 
-                    ((source pi, fld pi) \in w_gt pre) & LR (source pi)]]).
+                    ((source pi, fld pi) \in w_gt pre) & LR (source pi)]].
 
-Definition M_minus o : nat := size (undup 
+(* A number of removed references from behind of wavefront to o (check
+old pi). *)
+
+Definition M_minus o : nat := size 
      [seq let pi := pe.1.2 in pi
                   | pe <- prefixes e0 p &
                     let: (pre, pi, _) := pe in   
-                    [&& (kindMA (kind pi)), (new pi) == o, 
-                    ((source pi, fld pi) \in w_lt pre) & LR (source pi)]]).
+                    [&& (kindMA (kind pi)), (old pi) == o, 
+                    ((source pi, fld pi) \in w_lt pre) & LR (source pi)]].
 
 Definition expose_c : seq ptr := 
      [seq new pi | pi <- p &
