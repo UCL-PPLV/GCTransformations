@@ -85,7 +85,9 @@ Definition M_plus o : nat := size
                   | pe <- prefixes e0 p &
                     let: (pre, pi, _) := pe in   
                     [&& (kindMA (kind pi)), (new pi) == o, 
-                    ((source pi, fld pi) \in w_gt pre) & LR (source pi)]].
+                    (* TODO: over-approximate wavefront with w_gt *)
+                    ((source pi, fld pi) \in wavefront (proj1_sig pre)) & 
+                    LR (source pi)]].
 
 (* A number of removed references from behind of wavefront to o (check
 old pi). *)
@@ -95,7 +97,9 @@ Definition M_minus o : nat := size
                   | pe <- prefixes e0 p &
                     let: (pre, pi, _) := pe in   
                     [&& (kindMA (kind pi)), (old pi) == o, 
-                    ((source pi, fld pi) \in w_lt pre) & LR (source pi)]].
+                    (* TODO: under-approximate wavefront with w_gt *)
+                    ((source pi, fld pi) \in wavefront (proj1_sig pre)) & 
+                    LR (source pi)]].
 
 Definition expose_c : seq ptr := 
      [seq new pi | pi <- p &
