@@ -80,9 +80,9 @@ Qed.
 
 (* A number of references from behind of wavefront to o, obtained as a
    result of mutation. *)
-Definition M_plus o : nat := size
+Definition M_plus l o : nat := size
      [seq let pi := pe.1.2 in pi
-                  | pe <- prefixes e0 p &
+                  | pe <- prefixes e0 l &
                     let: (pre, pi, _) := pe in   
                     [&& (kindMA (kind pi)), (new pi) == o, 
                     (* TODO: over-approximate wavefront with w_gt *)
@@ -92,19 +92,65 @@ Definition M_plus o : nat := size
 (* A number of removed references from behind of wavefront to o (check
 old pi). *)
 
-Definition M_minus o : nat := size 
+Definition M_minus l o : nat := size 
      [seq let pi := pe.1.2 in pi
-                  | pe <- prefixes e0 p &
+                  | pe <- prefixes e0 l &
                     let: (pre, pi, _) := pe in   
                     [&& (kindMA (kind pi)), (old pi) == o, 
                     (* TODO: under-approximate wavefront with w_gt *)
                     ((source pi, fld pi) \in wavefront (proj1_sig pre)) & 
                     LR (source pi)]].
 
+
+(* The following lemma is the key for the proof of expose_c soundness,
+   as it justifies the use of the mutator count as a valid way to expose
+   reachable objects. *)
+
+Lemma mut_count_fires l h' (g' : graph h') et ema l1 l2 n :
+   executeLog g0 l = Some {| hp := h'; gp := g' |} ->
+   l = l1 ++ et :: l2 -> kind et == T ->
+   ema \in l2 -> kindMA (kind ema) ->
+   source et = source ema -> fld et = fld ema ->
+   source ema # fld ema @ g' = n ->
+   n \in [seq new pi | pi <- l & (M_minus l (new pi) < M_plus l (new pi))].
+Proof.
+move=>pf E K D Km E1 E2 G; clear epf p h g. 
+rename h' into h; rename g' into g.
+elim/last_ind: l2 D l pf h g E=>// l2 e Hi D l pf h' g' E. 
+
+(* Hmm, are you sure that there is no bug there? What about the
+following 3-entry log:
+
+<Type, Source, Field, Old, New>
+--------------------------
+<T, o, f, n, n>
+<M, o, f, n, n'>
+<M, o, f, n', n>
+
+Result M(o) = 0
+
+
+
+ *)
+
+(* TODO *)
+
+
+
+Admitted.
+
+
+
+
+
+
+
+
+
 Definition expose_c : seq ptr := 
      [seq new pi | pi <- p &
                    let n := new pi in
-                   [&& (M_plus n > M_minus n) & IS n]].
+                   [&& (M_plus p n > M_minus p n) & IS n]].
 
 
 Lemma expose_c_fires et l1 l2 : 
@@ -122,6 +168,12 @@ case: (traced_objects epf E K); [left | right].
 - by apply/tracedTargetsP; exists et, l1, l2.
 case/hasP: b=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4; rewrite E2 E3. 
 rewrite E2 ?E3 in H2 E4.
+rewrite /expose_c E4.
+case/mapP: (mut_count_fires epf E K D K2 E2 E3 E4)=>e H3 E'.
+apply/mapP; exists e=>//.
+by rewrite !mem_filter ?H1 -?(andbC true)/= in H3 *.
+Qed.
+
 
 (* Okay, now we need to figure out, why the inequlaity (M_plus n >
    M_minus n) exposes the sound superset of missed objects wrt. the
