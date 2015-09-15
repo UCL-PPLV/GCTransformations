@@ -106,17 +106,25 @@ Definition M_minus l o : nat := size
    as it justifies the use of the mutator count as a valid way to expose
    reachable objects. *)
 
-Lemma mut_count_fires l h' (g' : graph h') et ema l1 l2 n :
+Lemma mut_count_fires l h' (g' : graph h') et ema l1 l2 :
    executeLog g0 l = Some {| hp := h'; gp := g' |} ->
    l = l1 ++ et :: l2 -> kind et == T ->
    ema \in l2 -> kindMA (kind ema) ->
    source et = source ema -> fld et = fld ema ->
-   source ema # fld ema @ g' = n ->
-   n \in [seq new pi | pi <- l & (M_minus l (new pi) < M_plus l (new pi))].
+   source ema # fld ema @ g' = new ema ->
+   new ema != new et ->
+   new ema \in [seq new pi | pi <- l & (M_minus l (new pi) < M_plus l (new pi))].
 Proof.
-move=>pf E K D Km E1 E2 G; clear epf p h g. 
+move=>pf E K D Km E1 E2 G N; clear epf p h g. 
 rename h' into h; rename g' into g.
+
+
 elim/last_ind: l2 D l pf h g E=>// l2 e Hi D l pf h' g' E. 
+rewrite -cats1 mem_cat inE/= in D; case/orP: D; last first.
+
+(* e is the last entry in the log *)
+move/eqP=>Z; subst ema.
+
 
 (* Hmm, are you sure that there is no bug there? What about the
 following 3-entry log:
@@ -127,9 +135,9 @@ following 3-entry log:
 <M, o, f, n, n'>
 <M, o, f, n', n>
 
-Result M(o) = 0
-
-
+This results is M+(o) = 1 and M-(o) = 1, hence M(o) = 0. Hmm, but then
+this case is covered, since the object is correctly captured in the
+T-entry itself. Interesting.
 
  *)
 
@@ -164,12 +172,16 @@ Lemma expose_c_fires et l1 l2 :
 Proof.
 move=>/=E K H1 H2.
 rewrite mem_cat; apply/orP.
-case: (traced_objects epf E K); [left | right].
-- by apply/tracedTargetsP; exists et, l1, l2.
-case/hasP: b=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4; rewrite E2 E3. 
+case: (traced_objects epf E K)=>B.
+- by left; apply/tracedTargetsP; exists et, l1, l2.
+case/hasP: B=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4; rewrite E2 E3. 
 rewrite E2 ?E3 in H2 E4.
-rewrite /expose_c E4.
-case/mapP: (mut_count_fires epf E K D K2 E2 E3 E4)=>e H3 E'.
+case X: (new ema == new et).
+- by move/eqP: X=>X; left; apply/tracedTargetsP; 
+     exists et, l1, l2; rewrite -X. 
+right; rewrite /expose_c E4.
+move/negbT: X=>X.
+case/mapP: (mut_count_fires epf E K D K2 E2 E3 E4 X)=>e H3 E'.
 apply/mapP; exists e=>//.
 by rewrite !mem_filter ?H1 -?(andbC true)/= in H3 *.
 Qed.
