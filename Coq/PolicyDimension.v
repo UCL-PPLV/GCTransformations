@@ -3,7 +3,7 @@ Require Import Ssreflect.eqtype Ssreflect.ssrfun Ssreflect.seq.
 Require Import MathComp.path.
 Require Import Eqdep pred prelude idynamic ordtype pcm finmap unionmap heap coding. 
 Require Import Hgraphs Logs Wavefronts Apex Partitions.
-Require Import WavefrontDimension.
+Require Import WavefrontDimension MutatorCount.
 Set Implicit Arguments. 
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
@@ -56,7 +56,6 @@ Definition expose_r : seq ptr :=
                [&& (kindMA k), ((o, f) \in w_gt pre),
                    SR o, IS n & IS (o#f@g)]].
 
-
 (* A lemma, similar to the one, proved for expose_apex *)
 
 Lemma expose_r_fires et l1 l2 : 
@@ -77,82 +76,6 @@ case: (prefix_wavefront e0 D E K)=>i[pre][G1]/(w_gt_approx epf wp) G2.
 apply/mapP'; exists (pre, ema, i)=>//=; split=>//.
 by apply/mem_filter'; rewrite !H1 -!(andbC true) K2/= -E2 -E3 G2; split.
 Qed.
-
-(* A number of references from behind of wavefront to o, obtained as a
-   result of mutation. *)
-Definition M_plus l o : nat := size
-     [seq let pi := pe.1.2 in pi
-                  | pe <- prefixes e0 l &
-                    let: (pre, pi, _) := pe in   
-                    [&& (kindMA (kind pi)), (new pi) == o, 
-                    (* TODO: over-approximate wavefront with w_gt *)
-                    ((source pi, fld pi) \in wavefront (proj1_sig pre)) & 
-                    LR (source pi)]].
-
-(* A number of removed references from behind of wavefront to o (check
-old pi). *)
-
-Definition M_minus l o : nat := size 
-     [seq let pi := pe.1.2 in pi
-                  | pe <- prefixes e0 l &
-                    let: (pre, pi, _) := pe in   
-                    [&& (kindMA (kind pi)), (old pi) == o, 
-                    (* TODO: under-approximate wavefront with w_gt *)
-                    ((source pi, fld pi) \in wavefront (proj1_sig pre)) & 
-                    LR (source pi)]].
-
-
-(* The following lemma is the key for the proof of expose_c soundness,
-   as it justifies the use of the mutator count as a valid way to expose
-   reachable objects. *)
-
-Lemma mut_count_fires l h' (g' : graph h') et ema l1 l2 :
-   executeLog g0 l = Some {| hp := h'; gp := g' |} ->
-   l = l1 ++ et :: l2 -> kind et == T ->
-   ema \in l2 -> kindMA (kind ema) ->
-   source et = source ema -> fld et = fld ema ->
-   source ema # fld ema @ g' = new ema ->
-   new ema != new et ->
-   new ema \in [seq new pi | pi <- l & (M_minus l (new pi) < M_plus l (new pi))].
-Proof.
-move=>pf E K D Km E1 E2 G N; clear epf p h g. 
-rename h' into h; rename g' into g.
-
-
-elim/last_ind: l2 D l pf h g E=>// l2 e Hi D l pf h' g' E. 
-rewrite -cats1 mem_cat inE/= in D; case/orP: D; last first.
-
-(* e is the last entry in the log *)
-move/eqP=>Z; subst ema.
-
-
-(* Hmm, are you sure that there is no bug there? What about the
-following 3-entry log:
-
-<Type, Source, Field, Old, New>
---------------------------
-<T, o, f, n, n>
-<M, o, f, n, n'>
-<M, o, f, n', n>
-
-This results is M+(o) = 1 and M-(o) = 1, hence M(o) = 0. Hmm, but then
-this case is covered, since the object is correctly captured in the
-T-entry itself. Interesting.
-
- *)
-
-(* TODO *)
-
-
-
-Admitted.
-
-
-
-
-
-
-
 
 
 Definition expose_c : seq ptr := 
@@ -211,6 +134,5 @@ Qed.
 
  *)
 
-Admitted.
 
 End PolicyDimension.
