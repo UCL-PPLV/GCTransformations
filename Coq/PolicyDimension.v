@@ -56,6 +56,11 @@ Definition expose_r : seq ptr :=
                [&& (kindMA k), ((o, f) \in w_gt pre),
                    SR o, IS n & IS (o#f@g)]].
 
+Definition expose_c : seq ptr := 
+  [seq new pi | pi <- p &
+                let n := new pi in
+                [&& (M_plus e0 polp p n > M_minus e0 polp p n) & IS n]].
+
 (* A lemma, similar to the one, proved for expose_apex *)
 
 Lemma expose_r_fires et l1 l2 : 
@@ -77,13 +82,6 @@ apply/mapP'; exists (pre, ema, i)=>//=; split=>//.
 by apply/mem_filter'; rewrite !H1 -!(andbC true) K2/= -E2 -E3 G2; split.
 Qed.
 
-
-Definition expose_c : seq ptr := 
-     [seq new pi | pi <- p &
-                   let n := new pi in
-                   [&& (M_plus p n > M_minus p n) & IS n]].
-
-
 Lemma expose_c_fires et l1 l2 : 
   let o := source et in
   let f := fld    et in
@@ -104,7 +102,7 @@ case X: (new ema == new et).
      exists et, l1, l2; rewrite -X. 
 right; rewrite /expose_c E4.
 move/negbT: X=>X.
-case/mapP: (mut_count_fires epf E K D K2 E2 E3 E4 X)=>e H3 E'.
+case/mapP: (mut_count_fires e0 epf E K D K2 E2 E3 E4 X H2)=>e H3 E'.
 apply/mapP; exists e=>//.
 by rewrite !mem_filter ?H1 -?(andbC true)/= in H3 *.
 Qed.
