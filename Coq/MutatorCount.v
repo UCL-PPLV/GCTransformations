@@ -21,13 +21,16 @@ Notation SR := (pr1 polp).
 Notation LR := (pr2 polp).
 
 
-(* Importantly, in the following two definitions, we compute the
+(* TODO: Importantly, in the following two definitions, we compute the
    sizes, not just of entries pi, but of the corresponding pairs
    (source pi, fld pi). This should facilitate the following proofs,
    as it allows for better partitioning of the contributions into
    positive and negative mutator counts (count_predC). Furthermore, we
    will have to show that M_plus >= M_minus for every pair (o, f) of
    the partition. *)
+
+(* TODO: Better yet, group entries in M_puls and M_minus according to (o, f)
+   dichotomy before summing up. *)
 
 (* A number of references from behind of wavefront to o, obtained as a
    result of mutation. *)
