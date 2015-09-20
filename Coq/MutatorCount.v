@@ -32,6 +32,11 @@ Notation LR := (pr2 polp).
 (* TODO: Better yet, group entries in M_puls and M_minus according to (o, f)
    dichotomy before summing up. *)
 
+(* Better yet: make M_plus and M_minus take (o,f) as an argument: this
+   should remove half of the proof obligation, yet everything is sound
+   (the actual correspondence of old and new definitions can be proven
+   later). Right now, we just go more "fine-grained". *)
+
 (* A number of references from behind of wavefront to o, obtained as a
    result of mutation. *)
 

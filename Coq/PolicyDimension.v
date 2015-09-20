@@ -58,8 +58,10 @@ Definition expose_r : seq ptr :=
 
 Definition expose_c : seq ptr := 
   [seq new pi | pi <- p &
-                let n := new pi in
-                [&& (M_plus e0 polp p n > M_minus e0 polp p n) & IS n]].
+                let n := new pi    in
+                let o := source pi in
+                let f := fld pi    in
+                [&& (M_plus e0 polp p o f n > M_minus e0 polp p o f n) & IS n]].
 
 (* A lemma, similar to the one, proved for expose_apex *)
 
