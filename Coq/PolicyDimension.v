@@ -61,7 +61,7 @@ Definition expose_c : seq ptr :=
                 let n := new pi    in
                 let o := source pi in
                 let f := fld pi    in
-                [&& (M_plus e0 polp p o f n > M_minus e0 polp p o f n) & IS n]].
+                [&& LR o, (M_plus e0 p o f n > M_minus e0 p o f n) & IS n]].
 
 (* A lemma, similar to the one, proved for expose_apex *)
 
@@ -99,40 +99,14 @@ case: (traced_objects epf E K)=>B.
 - by left; apply/tracedTargetsP; exists et, l1, l2.
 case/hasP: B=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4; rewrite E2 E3. 
 rewrite E2 ?E3 in H2 E4.
-case X: (new ema == new et).
-- by move/eqP: X=>X; left; apply/tracedTargetsP; 
-     exists et, l1, l2; rewrite -X. 
+case X: (has (matchingT ema) p).
+- case/hasP: X=>e /in_split[l3][l4]E'/andP[K'/andP[E3']]/andP[E2']E4'.
+  by left; apply/tracedTargetsP; exists e, l3, l4; move/eqP: E4'=>->. 
+move/negbT: X=>X. 
 right; rewrite /expose_c E4.
-move/negbT: X=>X.
-case/mapP: (mut_count_fires e0 epf E K D K2 E2 E3 E4 X H2)=>e H3 E'.
+case/mapP:(mut_count_fires e0 epf E K D K2 E2 E3 E4 X)=>e H3[Z1 Z2 Z3].
 apply/mapP; exists e=>//.
-by rewrite !mem_filter ?H1 -?(andbC true)/= in H3 *.
+by rewrite !mem_filter -!Z1 -!Z2 H2 /= H1 -?(andbC true)/= in H3 *. 
 Qed.
-
-
-(* Okay, now we need to figure out, why the inequlaity (M_plus n >
-   M_minus n) exposes the sound superset of missed objects wrt. the
-   prefix p. Intuitively, this is by the following argument.
-
-   M_plus is number of prefixes of p, where 'o' occurs as a target,
-   and some of its corresponding source fields values are
-   traced. M_plus is a number of prefixes of p, where 'o' occurs as a
-   target, and *all* of its source fields values are traced. The
-   difference between the two being equal zero indicates that all
-   affected object fields of interest were in fact observed by tracing
-   (M_minus makes sure of that thanks to the all-check in the
-   definition of W_lt).
-
-   THe actual explanation of this difference (dubbed Mutator Count)
-   from the paper is as follows. The mutator count is the number of
-   pointers to an object from object fields behind the wavefront. This
-   quantity is computed with respect to a given wavefront. We assume
-   that some objects in the heap are rescanned objects (SR) that do
-   not affect the mutator count. The mutator count computation is
-   therefore parameterized by a set of objects LR from which the count
-   should be computed.
-
- *)
-
 
 End PolicyDimension.
