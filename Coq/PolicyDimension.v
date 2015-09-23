@@ -80,8 +80,9 @@ case: (traced_objects epf E K); [left | right].
 - by apply/tracedTargetsP; exists et, l1, l2.
 case/hasP: b=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4; rewrite E2 E3.
 case: (prefix_wavefront e0 D E K)=>i[pre][G1]/(w_gt_approx epf wp) G2.
-apply/mapP'; exists (pre, ema, i)=>//=; split=>//.
-by apply/mem_filter'; rewrite !H1 -!(andbC true) K2/= -E2 -E3 G2; split.
+apply/mapP; exists (pre, ema, i)=>//=.
+rewrite mem_filter K2 -E2 -E3 H2 !H1 G1 -!(andbC true)/=.
+by apply: G2; case/prefV: G1=>Y1 Y2 Y3; exists i.
 Qed.
 
 Lemma expose_c_fires et l1 l2 : 

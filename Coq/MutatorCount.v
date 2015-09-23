@@ -20,7 +20,6 @@ Qed.
 Section MutatorCount.
 
 Variable e0 : LogEntry.
-(* Initial graph an heap *)
 
 (* A number of references from behind of wavefront to o, obtained as a
    result of mutation. *)
@@ -32,7 +31,7 @@ Definition M_plus l o f n : nat := size
                     [&& (kindMA (kind pi)), (new pi) == n, 
                     (* TODO: over-approximate wavefront with w_gt *)
                     (source pi, fld pi) == (o, f) &
-                    ((o, f) \in wavefront (proj1_sig pre))]].
+                    ((o, f) \in wavefront pre)]].
 
 (* A number of removed references from behind of wavefront to the
    field object o (check old pi). *)
@@ -44,7 +43,7 @@ Definition M_minus l o f n : nat := size
                     [&& (kindMA (kind pi)), (old pi) == n, 
                     (* TODO: under-approximate wavefront with w_gt *)
                     (source pi, fld pi) == (o, f) &
-                    ((o, f) \in wavefront (proj1_sig pre))]].
+                    ((o, f) \in wavefront pre)]].
 
 (* A T-entry e records exactly the new value of a MA-entry *)
 

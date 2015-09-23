@@ -12,6 +12,8 @@ Unset Printing Implicit Defensive.
 (* Implementation of the Apex 'expose' function and the proof of its soundness. *)
 (********************************************************************************)
 
+Definition prefix {A : eqType} (l1 l : seq A) := exists n, l1 = take n l.
+
 Section ApexAlgo.
 
 (* Default log entry *)
@@ -31,12 +33,11 @@ Variable (epf : executeLog g0 p = Some (ExRes g)).
 (*    Apex procedure for exposing reachable objects in the graph  *)
 (******************************************************************)
 
-(* A dependent type of prefixes of p *)
-Definition prefix (l : log) := {l1 | exists n, l1 = take n l}.
-
 (* A candidate for approximating wavefront *)
-Variable wf_approx : prefix p -> seq (ptr * nat).
-Hypothesis wfp : forall lp, {subset wavefront (proj1_sig lp) <= wf_approx lp}. 
+Variable wf_approx : log -> seq (ptr * nat).
+
+Hypothesis wfp : forall l, prefix l p ->
+   {subset wavefront l <= wf_approx l}. 
 
 Definition expose_apex : seq ptr := 
   [seq let pi := pe.1.2    in
@@ -67,9 +68,9 @@ Lemma expose_apex_fires l1 l2 et ema :
 Proof.  
 move=>/=E D Kma Kt S F N.
 case: (prefix_wavefront e0 D E Kt)=>i[pre][H1]/wfp H2.
-apply/mapP'; exists (pre, ema, i)=>//=.
-split; last by rewrite N.
-by apply/mem_filter'; rewrite Kma/= -S -F H2.
+apply/mapP; exists (pre, ema, i)=>//=.
+rewrite mem_filter -S -F H1 Kma -!(andbC true)/=; apply: H2.
+by case/prefV: H1=>G1 G2 G3; exists i.
 Qed.
 
 (******************************************************************)
@@ -96,7 +97,6 @@ Qed.
 
 End ApexAlgo.
 
-
 Section ApexVanilla.
 
 (* Runnin Apex with the defalut wavefront function *)
@@ -106,16 +106,11 @@ Variables (h0 : heap) (g0: graph h0) (p : log).
 Variables (h : heap) (g: graph h).
 Variable (epf : executeLog g0 p = Some (ExRes g)).
 
-Definition wf_plain (lp : prefix p) := wavefront (proj1_sig lp).
-
-Lemma wf_plain_sound lp : {subset wavefront (proj1_sig lp) <= wf_plain lp}.
-Proof. done. Qed.
-
 (* Indeed, this is trivially sound  *)
 
 Corollary vanilla_expose_apex_sound : 
   {subset actualTargets p g
-            <= tracedTargets p ++ expose_apex e0 g wf_plain}.
-Proof. by apply: (expose_apex_sound e0 epf wf_plain_sound). Qed.
+            <= tracedTargets p ++ expose_apex e0 p g wavefront}.
+Proof. by apply: (expose_apex_sound e0 epf)=>l _. Qed.
 
 End ApexVanilla.

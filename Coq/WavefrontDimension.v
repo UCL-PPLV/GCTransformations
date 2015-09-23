@@ -26,17 +26,6 @@ Notation OL := (pr2 wp).
 Definition all_obj_fields (e : ptr) := 
     [seq (e, f) | f <- iota 0 (size (fields g e))]. 
 
-(* TODO: do something with these fields, as this becomes problematic!
-   Possible solution: get read of certified prefixes by storing the
-   number of fields into some meta-function that just returns it. The
-   allocator runs the very same function, and then the preservation of
-   this size is ensured. So, in other words, the pointer by itself
-   carries information on what is its fields size, hence it's globally
-   accessible by everyone. Therefore, we don't need to retrieve it
-   from the log.
-
- *)
-
 Definition all_obj_fields_wf l :=
     flatten [seq (all_obj_fields e.1) | e <- wavefront l].
 
@@ -50,15 +39,15 @@ Definition all_obj_fields_wf l :=
    argument, which is not just a log, but a prefix of the main GC log
    p, for which the expose procedure is run. *)
 
-Definition W_gt (lp : prefix p) := 
-   let l := proj1_sig lp in
+Definition W_gt l := 
    let wfl := [seq ef <- wavefront l         | FL ef.1] in
    let wol := [seq ef <- all_obj_fields_wf l | OL ef.1] in
        wfl ++ wol.
 
-Lemma w_gt_approx lp : {subset wavefront (proj1_sig lp) <= W_gt lp}.
+Lemma w_gt_approx l : 
+  prefix l p -> {subset wavefront l <= W_gt l}.
 Proof.
-case: lp=>l[n]pf/=.
+case=>n pf/=.
 move=>o; rewrite /W_gt mem_cat !mem_filter.
 case X: (FL o.1)=>//=H; first by rewrite H.
 move: (pr_coh wp (o.1)); rewrite X=>/=->/=.
@@ -77,7 +66,7 @@ Variable e0 : LogEntry.
 
 Corollary w_gt_expose_apex_sound : 
   {subset actualTargets p g
-            <= tracedTargets p ++ expose_apex e0 g W_gt}.
+            <= tracedTargets p ++ expose_apex e0 p g W_gt}.
 Proof. by apply: (expose_apex_sound e0 epf w_gt_approx). Qed.
 
 (* W_gt is an underapproximation the set of object fields' values
@@ -86,8 +75,7 @@ Proof. by apply: (expose_apex_sound e0 epf w_gt_approx). Qed.
    subset of all objects in the wavefront, as its OL-part only reports
    the objects whose *all* fields were traced in the wavefront. *)
 
-Definition W_lt (lp : prefix p) := 
-   let l := proj1_sig lp in
+Definition W_lt l := 
    let wfl := [seq ef | ef <- wavefront l & FL ef.1] in
    let wol := [seq ef | ef <- wavefront l & 
                         (OL ef.1) && 
