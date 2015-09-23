@@ -21,13 +21,39 @@ Section MutatorCount.
 
 Variable e0 : LogEntry.
 
-Lemma prefixes_rcons l e : prefixes e0 (rcons l e) = rcons (prefixes e0 l) (l, e). 
-Proof.
-Search _ (map) (rcons).
-rewrite /prefixes size_rcons -addn1 iota_add add0n /= map_cat/= cats1. 
-congr (rcons _ _).
-apply/eq_in_map=>n; rewrite mem_iota add0n; case/andP=>_ H.
-Admitted.
+(*
+
+IMPORTANT: Ultimately, the whole correctness proof for the mutator
+count logic bois down to the following fact:
+
+- Let's consided a sequence l, such that some elements e of its are
+  "positive" (pos e), and some are "negative" (neg e). The same
+  element e can be positive and negative simultaneously.
+
+- For each e \in l, such that (neg e), it's either
+
+  exists l1 l2,  l = l1 ++ e :: l2 /\ ~~ has neg l1 /\ has pos l1  or
+  exists l1 l2 l3 e', l = l1 ++ e' :: l2 ++ e :: l3, such that
+  neg e /\ has pos (e' :: l2)
+  
+Then count pos l > count neg l. 
+
+Essentially, the whole list can be split on chunks with at most one
+negative and at least one positive element.
+
+After this lemma is proved, we will have to show that it is the case
+for a "good" log l and pos := match (s, f, new), neg := match (s, f,
+old).
+
+*)
+
+(* Lemma prefixes_rcons l e : prefixes e0 (rcons l e) = rcons (prefixes e0 l) (l, e).  *)
+(* Proof. *)
+(* Search _ (map) (rcons). *)
+(* rewrite /prefixes size_rcons -addn1 iota_add add0n /= map_cat/= cats1.  *)
+(* congr (rcons _ _). *)
+(* apply/eq_in_map=>n; rewrite mem_iota add0n; case/andP=>_ H. *)
+(* Admitted. *)
 
 (* A number of references from behind of wavefront to o, obtained as a
    result of mutation. *)
