@@ -95,18 +95,19 @@ Lemma expose_c_fires et l1 l2 :
 Proof.
 move=>/=E K H1 H2.
 rewrite mem_cat; apply/orP.
-case: (traced_objects epf E K)=>B.
+case: (traced_objects' epf E K)=>B.
 - by left; apply/tracedTargetsP; exists et, l1, l2.
-case/hasP: B=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4; rewrite E2 E3. 
-rewrite E2 ?E3 in H2 E4.
+case: B=> ema[l3][l4]/andP[M]/andP[/eqP E2]/andP[/eqP E3]N.
 case X: (has (matchingT ema) p).
-- case/hasP: X=>e /in_split[l3][l4]E'/andP[K'/andP[E3']]/andP[E2']E4'.
-  by left; apply/tracedTargetsP; exists e, l3, l4; move/eqP: E4'=>->. 
-move/negbT: X=>X. 
-right; rewrite /expose_c E4.
-case/mapP:(mut_count_fires e0 epf E K D K2 E2 E3 E4 X)=>e H3[Z1 Z2 Z3].
-apply/mapP; exists e=>//.
-by rewrite !mem_filter -!Z1 -!Z2 H2 /= H1 -?(andbC true)/= in H3 *. 
+- case/hasP: X=>e /in_split[l5][l6]E'/andP[K'/andP[E3']]/andP[E2']E4'.
+  by left; apply/tracedTargetsP; exists e, l5, l6; move/eqP: E4'=>->.  
+move/negbT: X=>X; subst l2.
+right; rewrite /expose_c.
+case/mapP: (mut_count_fires e0 epf E K M E2 X N)=>e H3[Z1 Z2 Z3].
+case/andP: M=>_/andP[/eqP Y1]/eqP Y2.
+apply/mapP; exists e=>//; last by rewrite -Z3. 
+rewrite !mem_filter -!Z1 -!Z2 H1 in H3 *.
+by rewrite Y1 in H2; rewrite H2 -!(andbC true). 
 Qed.
 
 End PolicyDimension.

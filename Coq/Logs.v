@@ -393,6 +393,16 @@ Qed.
 (*            Lemmas about different entries and their configurations          *)
 (*******************************************************************************)
 
+Lemma in_split {A : eqType} e (l : seq A): 
+  e \in l <-> exists l1 l2, l = l1 ++ e :: l2.
+Proof.
+split=>[|[l1][l2]->]; last first.
+- by rewrite mem_cat orbC inE eqxx.
+elim:l=>//x xs Hi; rewrite inE/=; case/orP.
+- by move/eqP=>Z; subst x; exists [::], xs; rewrite cat0s.
+by case/Hi=>l1[l2]->; exists (x :: l1), l2. 
+Qed.
+
 (* Initial graph an heap *)
 Variables (h0 : heap) (g0: graph h0).
 
@@ -423,12 +433,13 @@ Qed.
    there is such entry, whose contributed value has actually survived
    till the final graph g'.  *)
 
-Lemma pickLastMAInSuffix l l1 l2 h' (g' : graph h') o f:
+Lemma pickLastMAInSuffix' l l1 l2 h' (g' : graph h') o f:
   l = l1 ++ l2 ->
   executeLog g0 l = Some {| hp := h'; gp := g' |} ->
-  has (fun e => [&& kindMA (kind e), o == source e & f == fld e]) l2 ->
-  has (fun e => [&& kindMA (kind e), o == source e,  f == fld e & 
-                    o#f@g' == new e]) l2.
+  has (matchingMA o f) l2 ->
+  exists ema l3 l4, 
+     [&& matchingMA o f ema, o#f@g' == new ema, l2 == l3 ++ ema :: l4 &
+         ~~ has (matchingMA o f) l4].
 Proof.
 elim/last_ind: l2 l h' g'=>//ls e Hi l h' g' E H1 H2.
 rewrite !has_rcons in H2 *; rewrite -rcons_cat in E; subst l.
@@ -441,20 +452,42 @@ case X: [&& kindMA (kind e), o == source e & f == fld e]; last first.
   (* (a) It is a T-entry => by induction hypothesis *) 
   + move=>_; have T: kind e == T by case: (kind e) G.
     case: (replayLogRconsT H1 T)=>H3 H4 H4'.
-    move/eqP: T=>T; rewrite T /= in H2.
-    by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2)=>->; rewrite orbC.
+    move/eqP: T=>T; rewrite /matchingMA T /=  in H2 Hi *.
+    case: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2)=>ema[l3][l4]/andP[M].
+    case/andP=>M1/andP[M2]M3; exists ema, l3, (rcons l4 e).
+    rewrite M M1 /= andbC/=; move/eqP:M2=>->. 
+    rewrite rcons_cat rcons_cons eqxx has_rcons negb_or M3 -!(andbC true)/=.
+    by move/negbTE: G=>->. 
 
 (* (b) It's and MA-entry with different source/field *)
 - move=>G1; have K : (kindMA (kind e)) by move/negbFE: G.
-  rewrite K (negbTE G1)/= in H2. 
+  rewrite /matchingMA K (negbTE G1)/= in H2 Hi *. 
   have N: ~~ matchingMA o f e by rewrite /matchingMA K.
   case: (replayLogRconsMA_neg H1 N)=>h1[g1][H3]E.
-  by move: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2); rewrite E orbC=>->.
+  case: (Hi _ _ _ (erefl (l1 ++ ls)) H3 H2)=>ema[l3][l4]/andP[M].
+  case/andP=>M1/andP[M2]M3; exists ema, l3, (rcons l4 e).
+  rewrite M E M1/=; move/eqP:M2=>->. 
+  rewrite rcons_cat rcons_cons eqxx has_rcons negb_or M3 -!(andbC true)/=.
+  by move/negbFE: G=>->/=. 
 
 (* Now we have a matching entry, which actually contributes. *)
-apply/orP; left; clear H2 Hi.
-suff S: o # f @ g' == new e by case/andP: X=>->/andP[]->->.
-by case: (replayLogRconsMA H1 X)=>h1[g1][_]->.
+case: (replayLogRconsMA H1 X)=>h1[g1][G1]E.
+by exists e, ls, [::]; rewrite /matchingMA X E cats1/= !eqxx.
+Qed.
+
+
+Lemma pickLastMAInSuffix l l1 l2 h' (g' : graph h') o f:
+  l = l1 ++ l2 ->
+  executeLog g0 l = Some {| hp := h'; gp := g' |} ->
+  has (fun e => [&& kindMA (kind e), o == source e & f == fld e]) l2 ->
+  has (fun e => [&& kindMA (kind e), o == source e,  f == fld e & 
+                    o#f@g' == new e]) l2.
+Proof.
+move=>E H1 H2.
+case: (pickLastMAInSuffix' E H1 H2)=>e[l3][l4].
+case/andP=>M1/andP[M2]/andP[M3]M4; apply/hasP; exists e.
+- by apply/in_split; exists l3, l4; apply/eqP.
+by rewrite M2 -!(andbC true).
 Qed.
 
 (* The following lemma states that for any T-entry, its captured
@@ -476,6 +509,25 @@ case H: (has (matchingMA (source et) (fld et)) l2); [right|left]; last first.
 - by apply: (@trace_pure l h g et l1 l2 Kt epf)=>//; apply/negbT.
 rewrite /matchingMA in H *; rewrite -cat_rcons in E. 
 by apply: (pickLastMAInSuffix E epf H).
+Qed.
+
+(* And alternative lemma with more refined conclusion *)
+Lemma traced_objects' h (g : graph h) l
+                     (epf : executeLog g0 l = Some (ExRes g)) et l1 l2 :
+  let o := source et in
+  let f := fld    et in
+  let n := new    et in
+  l = l1 ++ et :: l2 -> kind et == T -> 
+  o#f@g = n \/
+  exists ema l3 l4, 
+     [&& matchingMA o f ema, o#f@g == new ema, l2 == l3 ++ ema :: l4 &
+         ~~ has (matchingMA o f) l4].
+Proof.
+move=>/= E Kt.
+case H: (has (matchingMA (source et) (fld et)) l2); [right|left]; last first.
+- by apply: (@trace_pure l h g et l1 l2 Kt epf)=>//; apply/negbT.
+rewrite /matchingMA in H *; rewrite -cat_rcons in E. 
+by apply: (pickLastMAInSuffix' E epf H).
 Qed.
 
 Lemma trace_fsize l h' (g' : graph h') et l1 l2: 
@@ -524,20 +576,12 @@ Definition tracedTargets :=
 Definition actualTargets : seq ptr := 
   [seq (pf.1)#(pf.2)@g | pf <- tracedObjFields].
 
-Lemma in_split {A : eqType} e (l : seq A): 
-  e \in l -> exists l1 l2, l = l1 ++ e :: l2.
-Proof.
-elim:l=>//x xs Hi; rewrite inE/=; case/orP.
-- by move/eqP=>Z; subst x; exists [::], xs; rewrite cat0s.
-by case/Hi=>l1[l2]->; exists (x :: l1), l2. 
-Qed.
-
 Lemma tracedEntriesP e: e \in tracedEntries <->
   kind e == T /\ exists l1 l2, p = l1 ++ e :: l2.
 Proof.
 split=>[|[H][l1][l2]E]. 
 - rewrite /tracedEntries mem_filter=>/andP[->]H; split=>//.
-  by apply: in_split.
+  by apply/in_split.
 rewrite /tracedEntries mem_filter H/= E.
 by rewrite mem_cat inE eqxx orbC.
 Qed.
