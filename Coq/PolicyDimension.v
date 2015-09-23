@@ -98,7 +98,7 @@ rewrite mem_cat; apply/orP.
 case: (traced_objects' epf E K)=>B.
 - by left; apply/tracedTargetsP; exists et, l1, l2.
 case: B=> ema[l3][l4]/andP[M]/andP[/eqP E2]/andP[/eqP E3]N.
-case X: (has (matchingT ema) p).
+case X: (has (matchingTFull ema) p).
 - case/hasP: X=>e /in_split[l5][l6]E'/andP[K'/andP[E3']]/andP[E2']E4'.
   by left; apply/tracedTargetsP; exists e, l5, l6; move/eqP: E4'=>->.  
 move/negbT: X=>X; subst l2.

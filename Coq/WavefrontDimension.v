@@ -26,6 +26,17 @@ Notation OL := (pr2 wp).
 Definition all_obj_fields (e : ptr) := 
     [seq (e, f) | f <- iota 0 (size (fields g e))]. 
 
+(* TODO: do something with these fields, as this becomes problematic!
+   Possible solution: get read of certified prefixes by storing the
+   number of fields into some meta-function that just returns it. The
+   allocator runs the very same function, and then the preservation of
+   this size is ensured. So, in other words, the pointer by itself
+   carries information on what is its fields size, hence it's globally
+   accessible by everyone. Therefore, we don't need to retrieve it
+   from the log.
+
+ *)
+
 Definition all_obj_fields_wf l :=
     flatten [seq (all_obj_fields e.1) | e <- wavefront l].
 
@@ -80,7 +91,7 @@ Definition W_lt (lp : prefix p) :=
    let wfl := [seq ef | ef <- wavefront l & FL ef.1] in
    let wol := [seq ef | ef <- wavefront l & 
                         (OL ef.1) && 
-                        (*  All fields of this object are in wavefron *)
+                        (*  All fields of this object are in the wavefront *)
                         all (fun e => e \in wavefront l)
                             (all_obj_fields_wf l)]
    in  wfl ++ wol.
