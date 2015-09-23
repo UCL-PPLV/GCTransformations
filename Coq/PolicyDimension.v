@@ -44,11 +44,11 @@ Notation w_lt := (W_lt g wp).
    the partition. The LR-part will be processed further. *)
 
 Definition expose_r : seq ptr := 
-  [seq let pi := pe.1.2    in
+  [seq let pi := pe.2      in
        let o  := source pi in
        let f  := fld pi    in 
        o#f@g | pe <- prefixes e0 p &
-               let: (pre, pi, _) := pe          in   
+               let: (pre, pi)    := pe          in   
                let k             := (kind pi)   in   
                let o             := (source pi) in
                let f             := (fld pi)    in   
@@ -79,10 +79,10 @@ rewrite mem_cat; apply/orP.
 case: (traced_objects epf E K); [left | right].
 - by apply/tracedTargetsP; exists et, l1, l2.
 case/hasP: b=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4; rewrite E2 E3.
-case: (prefix_wavefront e0 D E K)=>i[pre][G1]/(w_gt_approx epf wp) G2.
-apply/mapP; exists (pre, ema, i)=>//=.
+case: (prefix_wavefront e0 D E K)=>pre[G1]/(w_gt_approx epf wp) G2.
+apply/mapP; exists (pre, ema)=>//=.
 rewrite mem_filter K2 -E2 -E3 H2 !H1 G1 -!(andbC true)/=.
-by apply: G2; case/prefV: G1=>Y1 Y2 Y3; exists i.
+by apply: G2; case/prefV: G1=>[i][Y1] Y2 Y3; exists i.
 Qed.
 
 Lemma expose_c_fires et l1 l2 : 

@@ -40,11 +40,11 @@ Hypothesis wfp : forall l, prefix l p ->
    {subset wavefront l <= wf_approx l}. 
 
 Definition expose_apex : seq ptr := 
-  [seq let pi := pe.1.2    in
+  [seq let pi := pe.2      in
        let o  := source pi in
        let f  := fld pi    in 
        o#f@g | pe <- prefixes e0 p &
-               let: (pre, pi, _) := pe          in   
+               let: (pre, pi)    := pe          in   
                let k             := (kind pi)   in   
                let o             := (source pi) in
                let f             := (fld pi)    in   
@@ -67,10 +67,10 @@ Lemma expose_apex_fires l1 l2 et ema :
   n \in expose_apex.
 Proof.  
 move=>/=E D Kma Kt S F N.
-case: (prefix_wavefront e0 D E Kt)=>i[pre][H1]/wfp H2.
-apply/mapP; exists (pre, ema, i)=>//=.
+case: (prefix_wavefront e0 D E Kt)=>pre[H1]/wfp H2.
+apply/mapP; exists (pre, ema)=>//=.
 rewrite mem_filter -S -F H1 Kma -!(andbC true)/=; apply: H2.
-by case/prefV: H1=>G1 G2 G3; exists i.
+by case/prefV: H1=>i[G1] G2 G3; exists i.
 Qed.
 
 (******************************************************************)

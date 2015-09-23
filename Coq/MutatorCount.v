@@ -21,13 +21,21 @@ Section MutatorCount.
 
 Variable e0 : LogEntry.
 
+Lemma prefixes_rcons l e : prefixes e0 (rcons l e) = rcons (prefixes e0 l) (l, e). 
+Proof.
+Search _ (map) (rcons).
+rewrite /prefixes size_rcons -addn1 iota_add add0n /= map_cat/= cats1. 
+congr (rcons _ _).
+apply/eq_in_map=>n; rewrite mem_iota add0n; case/andP=>_ H.
+Admitted.
+
 (* A number of references from behind of wavefront to o, obtained as a
    result of mutation. *)
 
 Definition M_plus l o f n : nat := size 
              [seq (o, f, n)
                   | pe <- prefixes e0 l &
-                    let: (pre, pi, _) := pe in   
+                    let: (pre, pi) := pe in   
                     [&& (kindMA (kind pi)), (new pi) == n, 
                     (* TODO: over-approximate wavefront with w_gt *)
                     (source pi, fld pi) == (o, f) &
@@ -39,7 +47,7 @@ Definition M_plus l o f n : nat := size
 Definition M_minus l o f n : nat := size 
              [seq (o, f, n)
                   | pe <- prefixes e0 l &
-                    let: (pre, pi, _) := pe in   
+                    let: (pre, pi) := pe in   
                     [&& (kindMA (kind pi)), (old pi) == n, 
                     (* TODO: under-approximate wavefront with w_gt *)
                     (source pi, fld pi) == (o, f) &
