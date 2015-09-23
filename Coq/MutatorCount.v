@@ -55,15 +55,12 @@ Definition matchingT ema := fun e =>
    [&& kind e == T, fld e == fld ema & source e == source ema].
 
 
-(* Lemma mut_count_inv h0 (g0 : graph h0) l h (g : graph h) et l2 : *)
-(*    executeLog g0 l = Some {| hp := h; gp := g |} -> *)
-(*    l = et :: l2 -> kind et == T -> *)
-(*    ~~ has (matchingTFull ema) l -> *)
-(*    M_minus l (source et) (fld et) (new et) <= *)
-(*    M_plus l (source et) (fld et) (new et). *)
-(* Proof.  *)
-(* 
+(* Okay, can we reformulate M_plus and M_minus as something more
+   suitable for processing in a specific case: basically, computing a
+   number of plus and minus entries in the intermediate log. *)
 
+
+(* 
 A general invariant for the mutator count for a specific object-field
 (o, f) should state that for any triple (o, f, n), if 
 

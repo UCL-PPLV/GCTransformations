@@ -22,10 +22,8 @@ Definition wavefront (l : log) :=
 (* Default log entry *)
 Variable e0 : LogEntry.
 
-(* An alternative definition of a log decomposition procedure *)
-Fixpoint prefixes_rec (l : log) n := 
-  if n is n'.+1 then (take n' l, nth e0 l n', n') :: prefixes_rec l n' else [::].
-Definition prefixes l := prefixes_rec l (size l).
+Definition prefixes l := 
+  map (fun n => (take n l, nth e0 l n, n)) (iota 0 (size l)).
 
 (* Some properties of our selector function "prefixes". *)
 Lemma take_nth_drop (n : nat) s:
@@ -42,11 +40,8 @@ Qed.
 Lemma in_prefixes_full l e pr i: (pr, e, i) \in prefixes l ->
   [/\ i < size l, nth e0 l i = e & pr = take i l].
 Proof.
-rewrite /prefixes.
-elim: (size l)=>//=n Hi.
-case/orP; last first.
-- by case/Hi=>H1 H2; split=>//; apply: (ltn_trans H1); apply:ltnSn.
-by case/eqP=>Z1 Z2 Z3; subst pr e i.
+case/mapP=>n H; case=>Z1 Z2 Z3; subst i e pr; split=>//.
+by rewrite mem_iota add0n in H; case/andP: H.
 Qed.
 
 Lemma in_prefixes l e pr i: (pr, e, i) \in prefixes l -> e \in l.
@@ -56,38 +51,19 @@ have X: exists2 j, j < size l & nth e0 l j = e by exists i=>//.
 by move/nthP: X.
 Qed.
 
-Lemma prefixes_in' l e j n : 
-  e \in l -> j < n -> nth e0 l j = e ->
-  (take j l, e, j) \in prefixes_rec l n.
-Proof.
-elim: n=>//=n Hi H1 H2 H3; case B: (j == n).
-- by move/eqP: B=>B; subst j; rewrite inE H3 eqxx.
-have X: j < n by rewrite ltnS leq_eqVlt B/= in H2.
-by rewrite inE; move:(Hi H1 X H3)=>->; rewrite orbC.
-Qed.
-
 Lemma prefixes_in l e: e \in l -> 
   exists i, (take i l, e, i) \in prefixes l.
 Proof.
-by move=>D; case/(nthP e0): (D)=>j H1 H2; exists j; apply: prefixes_in'.
-Qed.
-
-Lemma prefixes_num' l j n  : 
-  j < n -> n <= size l -> exists e, (take j l, e, j) \in prefixes_rec l n.
-Proof.
-elim: n=>//=n Hi H1 H2; case B: (j == n); last first.
-- have X: j < n by rewrite ltnS leq_eqVlt B/= in H1.
-  have Y: n <= size l by apply:ltnW. 
-  by case: (Hi X Y)=>e G; exists e; rewrite inE G orbC.
-move/eqP: B=>B; subst j=>{H1 Hi}.
-exists (nth e0 l n).
-by rewrite inE eqxx.
+move=>D; case/(nthP e0): (D)=>j H1 H2; exists j.
+apply/mapP; exists j; first by rewrite mem_iota add0n.
+by rewrite H2.
 Qed.
 
 Lemma prefixes_num l n  : 
   n < size l -> exists e, (take n l, e, n) \in prefixes l.
 Proof.
-by move/(@prefixes_num' l n (size l))=>H; apply:H; apply:leqnn.
+move=>D; exists (nth e0 l n); apply/mapP; exists n=>//.
+by rewrite mem_iota add0n.
 Qed.
 
 Lemma prefV l pr e n:
@@ -112,9 +88,11 @@ have X2: i < size l
   by rewrite/i E!size_cat -addnA ltn_add2l -{1}[size (_::l2)]addn0 ltn_add2l. 
 have Y: forall a, a - a = 0 by elim.
 have X3: nth e0 l i = e by rewrite E nth_cat /i ltnn Y/=. 
-move: (prefixes_in' X1 X2 X3)=>H; split=>//.
-by rewrite E take_size_cat /i// mem_cat inE eqxx orbC.
+split; last by rewrite E take_size_cat /i// mem_cat inE eqxx orbC.
+apply/mapP; exists i; last by rewrite X3.
+by rewrite mem_iota add0n.
 Qed.
+
 
 Lemma prefix_wavefront l1 l2 l et e :
   e \in l2 -> l = l1 ++ et :: l2  -> kind et == T ->
