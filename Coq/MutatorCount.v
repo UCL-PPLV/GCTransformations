@@ -64,6 +64,32 @@ Lemma posCount {A : eqType} pos neg (l : seq A) next :
   PositiveSeq pos neg l next -> count neg l <= count pos l.
 Proof. by move/posCount_gen; case: next=>//; apply: ltnW. Qed.
 
+(* Alternative definition of positive sequences *)
+
+Definition PositiveAlt {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
+  forall en l1 l2, l = l1 ++ en :: l2 -> neg en ->
+  exists ep l3 l4, [/\ l1 = l3 ++ ep :: l4, pos ep & ~~ has neg l4].
+
+(* The following definition is wrong: needs to be refined *)
+Inductive PositiveAlt' {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
+  | Empty of l = [::]
+  | NonNeg of ~~ has neg l
+  | NegSplit l1 e l2 of l = l1 ++ e :: l2 & neg e & ~~ has neg l2 & 
+                        has pos (e :: l2) & PositiveAlt' pos neg l1.
+
+
+Lemma pos_alt_imp {A : eqType} (pos neg : A -> bool) (l : seq A) : 
+   PositiveAlt pos neg l -> PositiveAlt' pos neg l.
+
+Proof.
+(* TODO: need generalized induction on lists - for prefixes *)
+Admitted.
+
+(* TODO: need spatical infuction in traces *)
+
+ 
+
+
 
 (* Lemma countNeg {A : eqType} (f : A -> bool) (l : seq A) :  *)
 (*   ~~ has f l -> count f l = 0. *)
