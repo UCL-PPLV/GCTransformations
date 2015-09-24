@@ -1,7 +1,7 @@
 Require Import Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat.
 Require Import Ssreflect.eqtype Ssreflect.ssrfun Ssreflect.seq.
 Require Import MathComp.path.
-Require Import Eqdep pred idynamic ordtype pcm finmap unionmap heap coding. 
+Require Import Eqdep pred prelude idynamic ordtype pcm finmap unionmap heap coding. 
 Require Import Hgraphs Logs.
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -103,6 +103,68 @@ have S: exists m, n = m.+1 by clear G H2; case: n H=>//n _; exists n.
 by case: S=>[m]Z; subst n; case: H2=>/=-> _; exists (take m l).
 Qed.
 
+(* More helper lemmas *)
+
+Lemma seq_iota_add {A : Type } (f g : nat -> A) m n : (forall i, f (i + m) = g i) ->
+  [seq f i | i <- iota m n] = [seq g i | i <- iota 0 n].
+Proof.
+move=>H.
+elim: n=>//n Hi.
+rewrite -![n.+1]addn1 !iota_add !map_cat; congr (_ ++ _)=>//={Hi}.
+by rewrite add0n addnC H. 
+Qed.
+
+Lemma seq_iota_inc {A : Type } (f g : nat -> A) n : (forall i, f i.+1 = g i) ->
+  [seq f i | i <- iota 1 n] = [seq g i | i <- iota 0 n].
+Proof. by move=>H; apply: seq_iota_add=>i; rewrite addn1. Qed.
+
+
+Lemma prefix_cons e l  : 
+  prefixes (e :: l) = 
+  ([::], e) :: [seq (e :: pe.1, pe.2) | pe <- prefixes l].
+Proof.
+congr (_ :: _); rewrite /prefixes -seq.map_comp.
+by apply: seq_iota_inc. 
+Qed.
+
+Lemma prefix_catl l1 l2  : 
+  prefixes (l1 ++ l2) = 
+  prefixes l1 ++ [seq (l1 ++ pe.1, pe.2) | pe <- prefixes l2].
+Proof.
+rewrite /prefixes size_cat iota_add add0n map_cat; congr (_ ++ _).
+- apply/eq_in_map=>i; rewrite mem_iota add0n=>/andP[]_ N. 
+  by rewrite take_cat nth_cat !N/=.
+rewrite -seq.map_comp; apply: seq_iota_add=>i/=. 
+have X a : a - a = 0 by elim: a.
+case: i=>[|i]; first by rewrite add0n take_cat nth_cat !ltnn !X.
+have Y: i.+1 + size l1 < size l1 = false
+     by rewrite -[i.+1]addn1 addnC -{2}[size l1]addn0 ltn_add2l.  
+by rewrite take_cat nth_cat !Y -!addnBA ?X ?addn0=>//.
+Qed.
+
+Lemma prefix_snd l : map snd (prefixes l) = l.
+Proof.
+rewrite /prefixes -seq.map_comp/=.
+suff X: l = [seq nth e0 l i | i <- iota 0 (size l)]
+        by rewrite {4}X; apply/eq_in_map=>i D/=.
+elim: l=>//e l/= Hi; congr (_ :: _).
+by rewrite {1}Hi; apply/sym; apply:(seq_iota_inc).
+Qed.
+
+Lemma count_comp {A B : eqType} (f : B -> bool) g (l : seq A) :
+  count (f \o g) l = count f (map g l).
+Proof. by rewrite count_map. Qed.
+
+Lemma find_first {A: eqType} (l : seq A) f : has f l ->
+  exists e l1 l2, [/\ l = l1 ++ e :: l2, f e & ~~ has f l1].
+Proof.
+elim:l=>//= e l Hi; case X : (f e)=>/=.
+- by move=> _; exists e, [::], l; rewrite cat0s.
+case/Hi=>e'[l1][l2][E1]H1 H2.
+by exists e', (e:: l1), l2; rewrite E1/= X H2/= H1. 
+Qed.
+
+
 (***************************************************************************)
 (*                              Wavefronts                                 *)
 (***************************************************************************)
@@ -130,6 +192,16 @@ case/mapP=>e; rewrite mem_filter=>/andP[H1].
 by case/in_split=>l1[l2][E]->/=; exists e, l1, l2.
 Qed.
 
+Lemma wavefront_filterT et l f o g :
+  kind et = T -> fld et = f ->  source et = o -> 
+  count (fun pe : log * LogEntry =>
+      (g pe.2) && ((o, f) \in wavefront pe.1))
+      [seq (et :: pe.1, pe.2) | pe <- prefixes l] = 
+  count (fun pe => g pe.2) (prefixes l).
+Proof.
+move=>H1 H2 H3; rewrite count_map; apply: eq_in_count=>/=pe H.
+by rewrite andbC /wavefront /= H1 /= H2 H3/= inE eqxx.
+Qed.
 
 End Wavefronts.
 

@@ -8,14 +8,9 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Unset Printing Implicit Defensive. 
 
-Lemma find_first {A: eqType} (l : seq A) f : has f l ->
-  exists e l1 l2, [/\ l = l1 ++ e :: l2, f e & ~~ has f l1].
-Proof.
-elim:l=>//= e l Hi; case X : (f e)=>/=.
-- by move=> _; exists e, [::], l; rewrite cat0s.
-case/Hi=>e'[l1][l2][E1]H1 H2.
-by exists e', (e:: l1), l2; rewrite E1/= X H2/= H1. 
-Qed.
+
+(* Defining positive sequences *)
+Section Positive.
 
 (* The sequence l is positive (wrt. to pos/neg functions), if it can
    be parititioned by negative elements to sequences with non-negative
@@ -53,43 +48,27 @@ elim=>{l}[l->|l l1 e l2 -> H1 H2 H3 _ Hi]//; rewrite !count_cat.
 by apply: leq_add=>//; last by apply: posChunkCount.
 Qed.
 
+End Positive.
+
 Section MutatorCount.
 
 Variable e0 : LogEntry.
 
-(* Helper lemmas *)
-Lemma seq_iota_inc {A : Type } (f g : nat -> A) n : (forall i, f i.+1 = g i) ->
-  [seq f i | i <- iota 1 n] = [seq g i | i <- iota 0 n].
-Proof.
-move=>H.
-elim: n=>//n Hi.
-rewrite -![n.+1]addn1 !iota_add !map_cat; congr (_ ++ _)=>//={Hi}.
-by rewrite add0n addnC addn1 H. 
-Qed.
-
-Lemma prefix_cons e l  : 
-  prefixes e0 (e :: l) = 
-  ([::], e) :: [seq (e :: pe.1, pe.2) | pe <- prefixes e0 l].
-Proof.
-congr (_ :: _); rewrite /prefixes -seq.map_comp.
-by apply: seq_iota_inc. 
-Qed.
-
-
 Definition mpos o f n (pi : LogEntry)  := 
   [&& (kindMA (kind pi)), (new pi) == n & (source pi, fld pi) == (o, f)].
-
 
 Definition mneg o f n (pi : LogEntry)  := 
   [&& (kindMA (kind pi)), (old pi) == n & (source pi, fld pi) == (o, f)].
 
+(* A number of added references from behind of wavefront to the
+   field object o (check new pi). *)
+
 Definition M_plus l o f n : nat := size 
              [seq (o, f, n)
                   | pe <- prefixes e0 l &
-                    let: (pre, pi) := pe in   
-                    mpos o f n pi &&
+                    mpos o f n pe.2 &&
                     (* TODO: over-approximate wavefront with w_gt *)
-                    ((o, f) \in wavefront pre)].
+                    ((o, f) \in wavefront pe.1)].
 
 (* A number of removed references from behind of wavefront to the
    field object o (check old pi). *)
@@ -97,16 +76,10 @@ Definition M_plus l o f n : nat := size
 Definition M_minus l o f n : nat := size 
              [seq (o, f, n)
                   | pe <- prefixes e0 l &
-                    let: (pre, pi) := pe in   
-                    mneg o f n pi &&
+                    mneg o f n pe.2 &&
                     (* TODO: under-approximate wavefront with w_gt *)
-                    ((o, f) \in wavefront pre)].
+                    ((o, f) \in wavefront pe.1)].
 
-
-(* TODO: We now prove that the values of M+ and M- for a log, starting
-   with an appropriate T-entry can be expressed as counts of new- and
-   old- mutations.
- *)
 
 Lemma m_plus_count et l o f n :
   kind et = T -> fld et = f -> source et = o ->
@@ -114,14 +87,98 @@ Lemma m_plus_count et l o f n :
 Proof.
 move=>H1 H2 H3; rewrite /M_plus size_map size_filter prefix_cons/=.
 rewrite [mpos o f n et]/mpos !H1/= !add0n.
-(* TODO: get rid of the wavefront conjunct *)
-Admitted.
+rewrite (wavefront_filterT e0 l (mpos o f n) H1 H2 H3).
+have X : {in (prefixes e0 l),
+         (fun pe : seq LogEntry * LogEntry => mpos o f n pe.2) =1
+         (mpos o f n) \o snd} by [].
+by rewrite (eq_in_count X) count_comp prefix_snd.
+Qed.
+
+Lemma m_minus_count et l o f n :
+  kind et = T -> fld et = f -> source et = o ->
+  M_minus (et :: l) o f n = count (mneg o f n) (et :: l).
+Proof.
+move=>H1 H2 H3; rewrite /M_minus size_map size_filter prefix_cons/=.
+rewrite [mneg o f n et]/mneg !H1/= !add0n.
+rewrite (wavefront_filterT e0 l (mneg o f n) H1 H2 H3).
+have X : {in (prefixes e0 l),
+         (fun pe : seq LogEntry * LogEntry => mneg o f n pe.2) =1
+         (mneg o f n) \o snd} by [].
+by rewrite (eq_in_count X) count_comp prefix_snd.
+Qed.
 
 
+(* The following two lemmas generalize these mutator count results to
+   non-trimmed logs forom the left (under the appropriate conditions
+   on l1).  *)
 
-(* TODO: Our subsequent goal is to show that the result of lemma
-   posCount is applicable for a "good" log l and pos := match (s, f,
-   new), neg := match (s, f, old). In other words, we need to prove
+Lemma m_plus_triml l1 l2 o f n :
+  ~~ has (fun e => [&& kind e == T, fld e == f & source e == o]) l1 ->
+  M_plus (l1 ++ l2) o f n = M_plus (l2) o f n.
+Proof.
+move=>H.
+rewrite /M_plus !size_map prefix_catl/= filter_cat size_cat.
+have X: size [seq pe <- prefixes e0 l1 | 
+              mpos o f n pe.2 & (o, f) \in wavefront pe.1] = 0.
+- rewrite size_filter; apply: countNeg.
+  apply/hasP=>[[[pre pi]]]=>A.
+  case/andP=>/andP/=[H1]/andP[H2]/eqP[]H3 H4/mapP[et]; rewrite mem_filter.
+  case/andP=>/eqP G1 G2[] G3 G4.
+  move/prefV: (A)=>[i][_]_ Z.
+  have Y: et \in l1 by rewrite Z mem_cat G2.
+  by move/hasPn: H=>/(_ _ Y); rewrite G1 -G4 -G3 !eqxx.
+rewrite X add0n !size_filter; clear X.
+rewrite -(count_comp (fun pe : log * LogEntry =>
+          mpos o f n pe.2 && ((o, f) \in wavefront pe.1))
+         (fun pe => (l1 ++ pe.1, pe.2))).
+apply: eq_in_count=>pre D/=; congr (_ && _).
+rewrite /wavefront; apply/Bool.eq_iff_eq_true; split;
+case/mapP=>e; rewrite mem_filter=>/andP[/eqP H1]G []H2 H3.
+- rewrite mem_cat in G; case/orP:G=>G.
+  - by move/hasPn: H=>/(_ _ G); rewrite H1 H2 H3 !eqxx.
+  apply/mapP; exists e; last by subst o f.  
+  by rewrite mem_filter H1 G eqxx.
+apply/mapP; exists e; last by subst o f.  
+by rewrite mem_filter mem_cat H1 G orbC.
+Qed.
+
+
+Lemma m_minus_triml l1 l2 o f n :
+  ~~ has (fun e => [&& kind e == T, fld e == f & source e == o]) l1 ->
+  M_minus (l1 ++ l2) o f n = M_minus l2 o f n.
+Proof.
+move=>H.
+rewrite /M_minus !size_map prefix_catl/= filter_cat size_cat.
+have X: size [seq pe <- prefixes e0 l1 | 
+              mneg o f n pe.2 & (o, f) \in wavefront pe.1] = 0.
+- rewrite size_filter; apply: countNeg.
+  apply/hasP=>[[[pre pi]]]=>A.
+  case/andP=>/andP/=[H1]/andP[H2]/eqP[]H3 H4/mapP[et]; rewrite mem_filter.
+  case/andP=>/eqP G1 G2[] G3 G4.
+  move/prefV: (A)=>[i][_]_ Z.
+  have Y: et \in l1 by rewrite Z mem_cat G2.
+  by move/hasPn: H=>/(_ _ Y); rewrite G1 -G4 -G3 !eqxx.
+rewrite X add0n !size_filter; clear X.
+rewrite -(count_comp (fun pe : log * LogEntry =>
+          mneg o f n pe.2 && ((o, f) \in wavefront pe.1))
+         (fun pe => (l1 ++ pe.1, pe.2))).
+apply: eq_in_count=>pre D/=; congr (_ && _).
+rewrite /wavefront; apply/Bool.eq_iff_eq_true; split;
+case/mapP=>e; rewrite mem_filter=>/andP[/eqP H1]G []H2 H3.
+- rewrite mem_cat in G; case/orP:G=>G.
+  - by move/hasPn: H=>/(_ _ G); rewrite H1 H2 H3 !eqxx.
+  apply/mapP; exists e; last by subst o f.  
+  by rewrite mem_filter H1 G eqxx.
+apply/mapP; exists e; last by subst o f.  
+by rewrite mem_filter mem_cat H1 G orbC.
+Qed.
+
+
+(* TODO: Okay, now (1) we can express M_plus and M_minus in terms of
+   counts of positive and negative elements and (2) we know that for
+   positive sequences the positive count is always greated or equal
+   than a negative count. Now, we need to establish that a valid log
+   always forms a positive sequence. In other words, we need to prove
    that each such log (starting from the corresponding T-entry is a
    subject of PositiveSeq). *)
 
@@ -141,10 +198,6 @@ Definition matchingTFull ema := fun e =>
 Definition matchingT ema := fun e =>
    [&& kind e == T, fld e == fld ema & source e == source ema].
 
-
-(* Okay, can we reformulate M_plus and M_minus as something more
-   suitable for processing in a specific case: basically, computing a
-   number of plus and minus entries in the intermediate log. *)
 
 
 (* 
