@@ -57,14 +57,39 @@ Section MutatorCount.
 
 Variable e0 : LogEntry.
 
+(* Helper lemmas *)
+Lemma seq_iota_inc {A : Type } (f g : nat -> A) n : (forall i, f i.+1 = g i) ->
+  [seq f i | i <- iota 1 n] = [seq g i | i <- iota 0 n].
+Proof.
+move=>H.
+elim: n=>//n Hi.
+rewrite -![n.+1]addn1 !iota_add !map_cat; congr (_ ++ _)=>//={Hi}.
+by rewrite add0n addnC addn1 H. 
+Qed.
+
+Lemma prefix_cons e l  : 
+  prefixes e0 (e :: l) = 
+  ([::], e) :: [seq (e :: pe.1, pe.2) | pe <- prefixes e0 l].
+Proof.
+congr (_ :: _); rewrite /prefixes -seq.map_comp.
+by apply: seq_iota_inc. 
+Qed.
+
+
+Definition mpos o f n (pi : LogEntry)  := 
+  [&& (kindMA (kind pi)), (new pi) == n & (source pi, fld pi) == (o, f)].
+
+
+Definition mneg o f n (pi : LogEntry)  := 
+  [&& (kindMA (kind pi)), (old pi) == n & (source pi, fld pi) == (o, f)].
+
 Definition M_plus l o f n : nat := size 
              [seq (o, f, n)
                   | pe <- prefixes e0 l &
                     let: (pre, pi) := pe in   
-                    [&& (kindMA (kind pi)), (new pi) == n, 
-                    (source pi, fld pi) == (o, f) &
+                    mpos o f n pi &&
                     (* TODO: over-approximate wavefront with w_gt *)
-                    ((o, f) \in wavefront pre)]].
+                    ((o, f) \in wavefront pre)].
 
 (* A number of removed references from behind of wavefront to the
    field object o (check old pi). *)
@@ -73,10 +98,9 @@ Definition M_minus l o f n : nat := size
              [seq (o, f, n)
                   | pe <- prefixes e0 l &
                     let: (pre, pi) := pe in   
-                    [&& (kindMA (kind pi)), (old pi) == n, 
-                    (source pi, fld pi) == (o, f) &
+                    mneg o f n pi &&
                     (* TODO: under-approximate wavefront with w_gt *)
-                    ((o, f) \in wavefront pre)]].
+                    ((o, f) \in wavefront pre)].
 
 
 (* TODO: We now prove that the values of M+ and M- for a log, starting
@@ -84,47 +108,14 @@ Definition M_minus l o f n : nat := size
    old- mutations.
  *)
 
-Definition mpos o f n (pi : LogEntry)  := 
-  [&& (kindMA (kind pi)), (new pi) == n & (source pi, fld pi) == (o, f)].
-
-Definition mneg o f n (pi : LogEntry)  := 
-  [&& (kindMA (kind pi)), (old pi) == n & (source pi, fld pi) == (o, f)].
-
-Lemma seq_inc {A : Type } (f g : nat -> A) n : forall i, f i.+1 = g i ->
-  [seq f i | i <- iota 1 n] = [seq g i | i <- iota 0 n].
-
-
 Lemma m_plus_count et l o f n :
   kind et = T -> fld et = f -> source et = o ->
   M_plus (et :: l) o f n = count (mpos o f n) (et :: l).
 Proof.
-move=>H1 H2 H3; rewrite /M_plus size_map size_filter.
-
-Search  _ (count _) (_ :: _).
-
-Lemma prefix_cons e l  : 
-  prefixes e0 (e :: l) = 
-  ([::], e) :: [seq (e :: pe.1, pe.2) | pe <- prefixes e0 l].
-Proof.
-congr (_ :: _); rewrite /prefixes -seq.map_comp.
-
-have H : forall i, 
-         (fun n => (take n (e :: l), nth e0 (e :: l) n)) i.+1 = 
-         ((fun pe : seq LogEntry * LogEntry => (e :: pe.1, pe.2)) \o
-           (fun n : nat => (take n l, nth e0 l n))) i by case.
-
-
-
-
-
-case/mapP=>n H1 H2; rewrite /= inE in H1.
-case/orP: H1=>[|H1]; [by move/eqP=>Z; subst n; left|right]. 
-rewrite mem_iota in H1; case/andP: H1=>H G.
-have S: exists m, n = m.+1 by clear G H2; case: n H=>//n _; exists n.
-by case: S=>[m]Z; subst n; case: H2=>/=-> _; exists (take m l).
-Qed.
-
-
+move=>H1 H2 H3; rewrite /M_plus size_map size_filter prefix_cons/=.
+rewrite [mpos o f n et]/mpos !H1/= !add0n.
+(* TODO: get rid of the wavefront conjunct *)
+Admitted.
 
 
 
