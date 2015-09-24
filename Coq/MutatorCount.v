@@ -17,54 +17,53 @@ case/Hi=>e'[l1][l2][E1]H1 H2.
 by exists e', (e:: l1), l2; rewrite E1/= X H2/= H1. 
 Qed.
 
+(* The sequence l is positive (wrt. to pos/neg functions), if it can
+   be parititioned by negative elements to sequences with non-negative
+   pos/neg balances, as established by the following lemmas. *)
+
+Inductive PositiveSeq {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
+  | MT of l = [::]
+  | NegSplit l1 e l2 of l = l1 ++ e :: l2 & neg e & ~~ has neg l2 & 
+                        has pos (e :: l2) & PositiveSeq pos neg l1.
+
+Lemma countNeg {A : eqType} (f : A -> bool) (l : seq A) : 
+  ~~ has f l -> count f l = 0.
+Proof.
+elim: l=>//=e l Hi/norP[H1 /Hi]H2; rewrite H2 addn0.
+by move/negbRL: H1=>->.
+Qed.
+
+Lemma countPos {A : eqType} (f : A -> bool) (l : seq A) : 
+  has f l -> count f l >= 1.
+Proof. by elim: l=>//=e l Hi/orP; case=>[->|/Hi /(ltn_addl (f e))]. Qed.
+
+Lemma posChunkCount {A : eqType} (pos neg : A -> bool) e l :
+  neg e -> ~~ has neg l -> has pos (e :: l) -> 
+  count neg (e :: l) <= count pos (e :: l).
+Proof.
+move=>H1 H2 /= H3; rewrite H1 (countNeg H2) addn0.
+case/orP: H3=>/=[->|H3]; first by apply: leq_addr.
+by move/(ltn_addl (pos e)): (countPos H3).
+Qed.
+
+Lemma posCount {A : eqType} pos neg (l : seq A) : 
+  PositiveSeq pos neg l -> count neg l <= count pos l.
+Proof.
+elim=>{l}[l->|l l1 e l2 -> H1 H2 H3 _ Hi]//; rewrite !count_cat.
+by apply: leq_add=>//; last by apply: posChunkCount.
+Qed.
+
 Section MutatorCount.
 
 Variable e0 : LogEntry.
-
-(*
-
-IMPORTANT: Ultimately, the whole correctness proof for the mutator
-count logic bois down to the following fact:
-
-- Let's consided a sequence l, such that some elements e of its are
-  "positive" (pos e), and some are "negative" (neg e). The same
-  element e can be positive and negative simultaneously.
-
-- For each e \in l, such that (neg e), it's either
-
-  exists l1 l2,  l = l1 ++ e :: l2 /\ ~~ has neg l1 /\ has pos l1  or
-  exists l1 l2 l3 e', l = l1 ++ e' :: l2 ++ e :: l3, such that
-  neg e /\ has pos (e' :: l2)
-  
-Then count pos l > count neg l. 
-
-Essentially, the whole list can be split on chunks with at most one
-negative and at least one positive element.
-
-After this lemma is proved, we will have to show that it is the case
-for a "good" log l and pos := match (s, f, new), neg := match (s, f,
-old).
-
-*)
-
-(* Lemma prefixes_rcons l e : prefixes e0 (rcons l e) = rcons (prefixes e0 l) (l, e).  *)
-(* Proof. *)
-(* Search _ (map) (rcons). *)
-(* rewrite /prefixes size_rcons -addn1 iota_add add0n /= map_cat/= cats1.  *)
-(* congr (rcons _ _). *)
-(* apply/eq_in_map=>n; rewrite mem_iota add0n; case/andP=>_ H. *)
-(* Admitted. *)
-
-(* A number of references from behind of wavefront to o, obtained as a
-   result of mutation. *)
 
 Definition M_plus l o f n : nat := size 
              [seq (o, f, n)
                   | pe <- prefixes e0 l &
                     let: (pre, pi) := pe in   
                     [&& (kindMA (kind pi)), (new pi) == n, 
-                    (* TODO: over-approximate wavefront with w_gt *)
                     (source pi, fld pi) == (o, f) &
+                    (* TODO: over-approximate wavefront with w_gt *)
                     ((o, f) \in wavefront pre)]].
 
 (* A number of removed references from behind of wavefront to the
@@ -75,9 +74,72 @@ Definition M_minus l o f n : nat := size
                   | pe <- prefixes e0 l &
                     let: (pre, pi) := pe in   
                     [&& (kindMA (kind pi)), (old pi) == n, 
-                    (* TODO: under-approximate wavefront with w_gt *)
                     (source pi, fld pi) == (o, f) &
+                    (* TODO: under-approximate wavefront with w_gt *)
                     ((o, f) \in wavefront pre)]].
+
+
+(* TODO: We now prove that the values of M+ and M- for a log, starting
+   with an appropriate T-entry can be expressed as counts of new- and
+   old- mutations.
+ *)
+
+Definition mpos o f n (pi : LogEntry)  := 
+  [&& (kindMA (kind pi)), (new pi) == n & (source pi, fld pi) == (o, f)].
+
+Definition mneg o f n (pi : LogEntry)  := 
+  [&& (kindMA (kind pi)), (old pi) == n & (source pi, fld pi) == (o, f)].
+
+Lemma seq_inc {A : Type } (f g : nat -> A) n : forall i, f i.+1 = g i ->
+  [seq f i | i <- iota 1 n] = [seq g i | i <- iota 0 n].
+
+
+Lemma m_plus_count et l o f n :
+  kind et = T -> fld et = f -> source et = o ->
+  M_plus (et :: l) o f n = count (mpos o f n) (et :: l).
+Proof.
+move=>H1 H2 H3; rewrite /M_plus size_map size_filter.
+
+Search  _ (count _) (_ :: _).
+
+Lemma prefix_cons e l  : 
+  prefixes e0 (e :: l) = 
+  ([::], e) :: [seq (e :: pe.1, pe.2) | pe <- prefixes e0 l].
+Proof.
+congr (_ :: _); rewrite /prefixes -seq.map_comp.
+
+have H : forall i, 
+         (fun n => (take n (e :: l), nth e0 (e :: l) n)) i.+1 = 
+         ((fun pe : seq LogEntry * LogEntry => (e :: pe.1, pe.2)) \o
+           (fun n : nat => (take n l, nth e0 l n))) i by case.
+
+
+
+
+
+case/mapP=>n H1 H2; rewrite /= inE in H1.
+case/orP: H1=>[|H1]; [by move/eqP=>Z; subst n; left|right]. 
+rewrite mem_iota in H1; case/andP: H1=>H G.
+have S: exists m, n = m.+1 by clear G H2; case: n H=>//n _; exists n.
+by case: S=>[m]Z; subst n; case: H2=>/=-> _; exists (take m l).
+Qed.
+
+
+
+
+
+(* TODO: Our subsequent goal is to show that the result of lemma
+   posCount is applicable for a "good" log l and pos := match (s, f,
+   new), neg := match (s, f, old). In other words, we need to prove
+   that each such log (starting from the corresponding T-entry is a
+   subject of PositiveSeq). *)
+
+
+
+
+
+
+
 
 (* A T-entry e records exactly the new value of a MA-entry *)
 

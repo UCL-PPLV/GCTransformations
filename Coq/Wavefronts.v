@@ -15,10 +15,6 @@ Unset Printing Implicit Defensive.
 
 Section Wavefronts.
 
-(* Definition of a wavefront *)
-Definition wavefront (l : log) := 
-  [seq (source pi, fld pi) | pi <- l & kind pi == T].
-
 (* Default log entry *)
 Variable e0 : LogEntry.
 
@@ -94,6 +90,27 @@ apply/mapP; exists i; last by rewrite X3.
 by rewrite mem_iota add0n.
 Qed.
 
+(* A helper lemma abot prefixes *)
+
+Lemma in_prefix_cons l e pre pi : 
+  (pre, pi) \in prefixes (e :: l) ->  
+  (pre, pi) = ([::], e) \/ exists l1, pre = e :: l1.
+Proof.
+case/mapP=>n H1 H2; rewrite /= inE in H1.
+case/orP: H1=>[|H1]; [by move/eqP=>Z; subst n; left|right]. 
+rewrite mem_iota in H1; case/andP: H1=>H G.
+have S: exists m, n = m.+1 by clear G H2; case: n H=>//n _; exists n.
+by case: S=>[m]Z; subst n; case: H2=>/=-> _; exists (take m l).
+Qed.
+
+(***************************************************************************)
+(*                              Wavefronts                                 *)
+(***************************************************************************)
+
+
+(* Definition of a wavefront *)
+Definition wavefront (l : log) := 
+  [seq (source pi, fld pi) | pi <- l & kind pi == T].
 
 Lemma prefix_wavefront l1 l2 l et e :
   e \in l2 -> l = l1 ++ et :: l2  -> kind et == T ->
@@ -112,6 +129,7 @@ Proof.
 case/mapP=>e; rewrite mem_filter=>/andP[H1].
 by case/in_split=>l1[l2][E]->/=; exists e, l1, l2.
 Qed.
+
 
 End Wavefronts.
 
