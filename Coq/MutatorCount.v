@@ -16,24 +16,24 @@ Section Positive.
    be parititioned by negative elements to sequences with non-negative
    pos/neg balances, as established by the following lemmas. *)
 
-Inductive PositiveSeq {A : eqType} (pos neg : A -> bool) 
+Inductive PositiveSeqSmall {A : eqType} (pos neg : A -> bool) 
                       (l : seq A)  (needPos : bool) : Prop :=
 
   (* Positive elements resets the context needPos to false *)
   | Pos l1 e  of [/\ l = rcons l1 e, pos e, 
-                 neg e = false & PositiveSeq pos neg l1 false]
+                 neg e = false & PositiveSeqSmall pos neg l1 false]
 
   | Neg l1 e  of [/\ l = rcons l1 e, pos e = false, 
-                 neg e, PositiveSeq pos neg l1 true & needPos = false]
+                 neg e, PositiveSeqSmall pos neg l1 true & needPos = false]
 
   | MT        of l = [::] &  needPos = false
 
   (* Neutral element just propagates the knowledge about interleaving. *)
   | Neut l1 e of [/\ l = rcons l1 e, pos e = false, 
-                     neg e = false & PositiveSeq pos neg l1 needPos]
+                     neg e = false & PositiveSeqSmall pos neg l1 needPos]
 
   | PosNeg l1 e of [/\ l = rcons l1 e, pos e = true, 
-                    neg e = true & PositiveSeq pos neg l1 true].
+                    neg e = true & PositiveSeqSmall pos neg l1 true].
 
 
 Lemma rcons_inj {A : eqType} l l' (a a' : A) :
@@ -47,7 +47,7 @@ by move=>x' l'; rewrite !rcons_cons; case=>Z; subst x'=>/Hi[]<-<-.
 Qed.
 
 Lemma posCount_gen {A : eqType} pos neg (l : seq A) next : 
-  PositiveSeq pos neg l next -> 
+  PositiveSeqSmall pos neg l next -> 
   if next then count neg l < count pos l else count neg l <= count pos l.
 Proof.
 elim/last_ind: l next; first by case=>//; case=>//l e[]; case: l.
@@ -61,62 +61,70 @@ by apply (ltn_trans H); apply: ltnSn.
 Qed.
 
 Lemma posCount {A : eqType} pos neg (l : seq A) next : 
-  PositiveSeq pos neg l next -> count neg l <= count pos l.
+  PositiveSeqSmall pos neg l next -> count neg l <= count pos l.
 Proof. by move/posCount_gen; case: next=>//; apply: ltnW. Qed.
 
 (* Alternative definition of positive sequences *)
 
-Definition PositiveAlt {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
+Definition PositiveSeqNonInd {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
   forall en l1 l2, l = l1 ++ en :: l2 -> neg en ->
   exists ep l3 l4, [/\ l1 = l3 ++ ep :: l4, pos ep & ~~ has neg l4].
 
 (* The following definition is wrong: needs to be refined *)
-Inductive PositiveAlt' {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
+Inductive PositiveSeqLarge {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
   | Empty of l = [::]
   | NonNeg of ~~ has neg l
-  | NegSplit l1 e l2 of l = l1 ++ e :: l2 & neg e & ~~ has neg l2 & 
-                        has pos (e :: l2) & PositiveAlt' pos neg l1.
+  | NegSplit en ep l1 l2 l3 of l = l1 ++ ep :: l3 ++ en :: l2 & 
+                               neg en & pos ep & 
+                               ~~ has neg l2 & ~~ has neg l3 &
+                               PositiveSeqLarge pos neg (rcons l1 ep).
 
-
-Lemma pos_alt_imp {A : eqType} (pos neg : A -> bool) (l : seq A) : 
-   PositiveAlt pos neg l -> PositiveAlt' pos neg l.
-
+Lemma countNeg {A : eqType} (f : A -> bool) (l : seq A) :
+  ~~ has f l -> count f l = 0.
 Proof.
-(* TODO: need generalized induction on lists - for prefixes *)
-Admitted.
+by elim: l=>//=e l Hi/norP[H1 /Hi]H2; rewrite H2 addn0; move/negbRL: H1=>->.
+Qed.
 
-(* TODO: need spatical infuction in traces *)
+Lemma strictlyPos {A : eqType} (pos neg : A -> bool) (l: seq A):
+  PositiveSeqLarge pos neg l -> 
+  (exists l' e, l = rcons l' e /\ pos e) ->
+  count neg l < count pos l.
+Proof.
+elim=>{l}[l->|l H[l'][e][Z]P1|l en ep l1 l2 l3->{l}N P H1 H2 Hi H3[l'][e][Z]P1].
+- by case=>l'[e]; case; case: l'.
+- by subst l; rewrite (countNeg H) -cats1/= count_cat/= P1/= addn0 addnC.
+have X: (exists (l' : seq A) (e : A), rcons l1 ep = rcons l' e /\ pos e)
+        by exists l1, ep. 
+move/H3: X=>{H3}H3. 
+case: (lastP l2) H1 Z=>/=[_|l e' H1].
+- rewrite cats1 -rcons_cons -rcons_cat=>/rcons_inj[]Z1 Z2; subst l' en. 
+  rewrite -cats1 !count_cat/= N P P1 (countNeg H2)!addn0/= addnA.
+  rewrite -cats1 !count_cat /= !addn0 P/= -(ltn_add2r 1) in H3.
+  by apply: (leq_trans H3); rewrite addnAC; apply: leq_addr.
+rewrite -rcons_cons -rcons_cat -rcons_cons -rcons_cat=>/rcons_inj[]Z1 Z2. 
+subst l' e'.
+rewrite -cats1 !count_cat/= !count_cat/=  N P P1 (countNeg H2)!addn0/= addnA !add0n.
+rewrite -cats1 has_cat negb_or in H1. 
+case/andP:H1=>/=; rewrite orbC=>/==>H1/negPf->/=.
+rewrite (countNeg H1) !addn0 addnA.
+rewrite -cats1 !count_cat /= !addn0 P/= -(ltn_add2r 1) in H3.
+by apply: (leq_trans H3); rewrite addnAC; apply: leq_addr.
+Qed.
 
- 
+Lemma posCountLarge {A : eqType} pos neg (l : seq A) :
+  PositiveSeqLarge pos neg l -> count neg l <= count pos l.
+Proof.
+elim=>{l}[l->|l/countNeg->|l en ep l1 l2 l3->{l}N P H1 H2 Hi H3]//.
+rewrite -cat_cons catA -(cat_rcons ep) !count_cat/=. 
+rewrite (countNeg H1) (countNeg H2) !addn0.
+rewrite -cats1 !count_cat/= !addn0 N P/=.
+rewrite -cats1 !count_cat/= !addn0 P/= in H3.
+have X: (exists (l' : seq A) (e : A), rcons l1 ep = rcons l' e /\ pos e)
+        by exists l1 ,ep. 
+move: (strictlyPos Hi X); rewrite -cats1 !count_cat /= P !addn0/=.
+by rewrite -addn1=>G; apply: (leq_trans G); rewrite -addnA; apply: leq_addr.
+Qed.
 
-
-
-(* Lemma countNeg {A : eqType} (f : A -> bool) (l : seq A) :  *)
-(*   ~~ has f l -> count f l = 0. *)
-(* Proof. *)
-(* elim: l=>//=e l Hi/norP[H1 /Hi]H2; rewrite H2 addn0. *)
-(* by move/negbRL: H1=>->. *)
-(* Qed. *)
-
-(* Lemma countPos {A : eqType} (f : A -> bool) (l : seq A) :  *)
-(*   has f l -> count f l >= 1. *)
-(* Proof. by elim: l=>//=e l Hi/orP; case=>[->|/Hi /(ltn_addl (f e))]. Qed. *)
-
-(* Lemma posChunkCount {A : eqType} (pos neg : A -> bool) e l : *)
-(*   neg e -> ~~ has neg l -> has pos (e :: l) ->  *)
-(*   count neg (e :: l) <= count pos (e :: l). *)
-(* Proof. *)
-(* move=>H1 H2 /= H3; rewrite H1 (countNeg H2) addn0. *)
-(* case/orP: H3=>/=[->|H3]; first by apply: leq_addr. *)
-(* by move/(ltn_addl (pos e)): (countPos H3). *)
-(* Qed. *)
-
-(* Lemma posCount {A : eqType} pos neg (l : seq A) :  *)
-(*   PositiveSeq pos neg l -> count neg l <= count pos l. *)
-(* Proof. *)
-(* elim=>{l}[l->|l l1 e l2 -> H1 H2 H3 _ Hi]//; rewrite !count_cat. *)
-(* by apply: leq_add=>//; last by apply: posChunkCount. *)
-(* Qed. *)
 
 End Positive.
 
