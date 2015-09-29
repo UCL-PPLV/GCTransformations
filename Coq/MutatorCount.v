@@ -125,6 +125,13 @@ move: (strictlyPos Hi X); rewrite -cats1 !count_cat /= P !addn0/=.
 by rewrite -addn1=>G; apply: (leq_trans G); rewrite -addnA; apply: leq_addr.
 Qed.
 
+Lemma positiveNonIndLarge  {A : eqType} (pos neg : A -> bool) (l : seq A) : 
+  PositiveSeqNonInd pos neg l -> PositiveSeqLarge pos neg l.
+Proof.
+admit.
+Admitted.
+
+
 
 End Positive.
 
