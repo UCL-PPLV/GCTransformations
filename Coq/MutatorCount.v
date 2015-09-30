@@ -128,10 +128,11 @@ Qed.
 Lemma positiveNonIndLarge  {A : eqType} (pos neg : A -> bool) (l : seq A) : 
   PositiveSeqNonInd pos neg l -> PositiveSeqLarge pos neg l.
 Proof.
+
+
+
 admit.
 Admitted.
-
-
 
 End Positive.
 
