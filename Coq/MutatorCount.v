@@ -65,14 +65,7 @@ Lemma posCount {A : eqType} pos neg (l : seq A) next :
 Proof. by move/posCount_gen; case: next=>//; apply: ltnW. Qed.
 
 (* Alternative definition of positive sequences *)
-
-Definition PositiveSeqNonInd {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
-  forall en l1 l2, l = l1 ++ en :: l2 -> neg en ->
-  exists ep l3 l4, [/\ l1 = l3 ++ ep :: l4, pos ep & ~~ has neg l4].
-
-(* The following definition is wrong: needs to be refined *)
 Inductive PositiveSeqLarge {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
-  | Empty of l = [::]
   | NonNeg of ~~ has neg l
   | NegSplit en ep l1 l2 l3 of l = l1 ++ ep :: l3 ++ en :: l2 & 
                                neg en & pos ep & 
@@ -90,8 +83,7 @@ Lemma strictlyPos {A : eqType} (pos neg : A -> bool) (l: seq A):
   (exists l' e, l = rcons l' e /\ pos e) ->
   count neg l < count pos l.
 Proof.
-elim=>{l}[l->|l H[l'][e][Z]P1|l en ep l1 l2 l3->{l}N P H1 H2 Hi H3[l'][e][Z]P1].
-- by case=>l'[e]; case; case: l'.
+elim=>{l}[l H[l'][e][Z]P1|l en ep l1 l2 l3->{l}N P H1 H2 Hi H3[l'][e][Z]P1].
 - by subst l; rewrite (countNeg H) -cats1/= count_cat/= P1/= addn0 addnC.
 have X: (exists (l' : seq A) (e : A), rcons l1 ep = rcons l' e /\ pos e)
         by exists l1, ep. 
@@ -114,7 +106,7 @@ Qed.
 Lemma posCountLarge {A : eqType} pos neg (l : seq A) :
   PositiveSeqLarge pos neg l -> count neg l <= count pos l.
 Proof.
-elim=>{l}[l->|l/countNeg->|l en ep l1 l2 l3->{l}N P H1 H2 Hi H3]//.
+elim=>{l}[l/countNeg->|l en ep l1 l2 l3->{l}N P H1 H2 Hi H3]//.
 rewrite -cat_cons catA -(cat_rcons ep) !count_cat/=. 
 rewrite (countNeg H1) (countNeg H2) !addn0.
 rewrite -cats1 !count_cat/= !addn0 N P/=.
@@ -125,15 +117,78 @@ move: (strictlyPos Hi X); rewrite -cats1 !count_cat /= P !addn0/=.
 by rewrite -addn1=>G; apply: (leq_trans G); rewrite -addnA; apply: leq_addr.
 Qed.
 
-Lemma positiveNonIndLarge  {A : eqType} (pos neg : A -> bool) (l : seq A) : 
-  PositiveSeqNonInd pos neg l -> PositiveSeqLarge pos neg l.
+Lemma find_last {A: eqType} (l : seq A) f : has f l ->
+  exists e l1 l2, [/\ l = l1 ++ e :: l2, f e & ~~ has f l2].
 Proof.
+elim/last_ind: l=>//= l e Hi; case X : (f e)=>/=.
+- by move=>_; exists e, l, [::]; rewrite cats1. 
+rewrite -cats1 has_cat/= orbC X/=.
+case/Hi=>e'[l1][l2][E1]H1 H2; subst l.
+exists e', l1, (rcons l2 e); rewrite cats1 rcons_cat rcons_cons. 
+by split=>//; rewrite -cats1 has_cat /= orbC X H2.
+Qed.
+
+Definition PositiveSeqNonInd {A : eqType} (pos neg : A -> bool) (l : seq A) : Prop :=
+  forall en l1 l2, neg en -> l = l1 ++ en :: l2 ->
+  exists ep l3 l4, [/\ l1 = l3 ++ ep :: l4, pos ep & ~~ has neg l4].
+
+(* Lemma positiveNonIndLarge  {A : eqType} (pos neg : A -> bool) (l : seq A) :  *)
+(*   PositiveSeqNonInd pos neg l -> PositiveSeqLarge pos neg l. *)
+(* Proof. *)
+(* elim/last_ind: l=>[_|l e Hi]; first by constructor 1.  *)
+(* case Y: (neg e). *)
+(* (* e is negative *) *)
+(* move/(_ e l [::] Y); rewrite cats1=>/(_ (erefl _))[ep][l1][l2][E]P H2. *)
+(* apply: (@NegSplit _ pos neg (rcons l e) e ep l1 [::] l2)=>//. *)
+(* - by rewrite E rcons_cat rcons_cons cats1.  *)
+(* admit. *)
+(* Admitted. *)
+
+Definition hasPrePos {A : eqType} (pos neg : A -> bool) (l : seq A) :=
+  exists l1 ep l2, [/\ l = l1 ++ ep :: l2, pos ep & ~~ has neg l2].
+
+(* TODO: Start here! *)
+
+Lemma tryOurLemma {A : eqType} (pos neg : A -> bool) (l: seq A) : 
+  PositiveSeqLarge pos neg l.
+Proof.
+elim/last_ind: l=>[|l e Hi]; first by constructor 1.
+case X: (neg e); last first. 
+- case: Hi=>[H|en ep l1 l2 l3 E N P H1 H2 Hi].
+  - by constructor 1; rewrite -cats1 has_cat/= X; rewrite orbC/=.
+  - apply: (@NegSplit _ pos neg (rcons l e) en ep l1 (rcons l2 e) l3)=>//.
+    - by rewrite E rcons_cat rcons_cons rcons_cat rcons_cons.
+    by rewrite -cats1 has_cat /= X orbC.
+
+(* This is specific to our logs and should be extracted and proved separately *)
+suff Z : hasPrePos pos neg l.
+
+case: Hi=>[H|en ep l1 l2 l3 E N P H1 H2 Hi].
+- case: Z=>l1[ep][l2][Z]P H'. 
+  apply: (@NegSplit _ pos neg (rcons l e) e ep l1 [::] l2 _ X P)=>//.
+  - by subst l; rewrite rcons_cat rcons_cons cats1.
+  constructor 1; subst l; rewrite -cats1.
+  rewrite !has_cat !negb_or/= -!(andbC true)/= in H *.
+  by case/ andP: H=>->/andP[->].
+
+case: Z=>l4[epp][l5][Z]P' H'. 
+
+Check (@NegSplit _ pos neg (rcons l e) e epp).
+
+(* OKay, now there is the plan: 
+
+- Prove the hasPrePos property for the valid logs, ending with the negative node.
+- Parametrize this lemma with this property appropriately.
+
+*)
+
+(* move: (@NegSplit _ pos neg (rcons (l1 ++ ep :: l3) en) en ep l1 [::] l3). *)
+(* rewrite {1}rcons_cat rcons_cons -cats1=>/(_ (erefl _) N P is_true_true H2 Hi)=>H. *)
+(* rewrite -!(cat_cons) catA -cat_rcons in E. *)
 
 
-
-admit.
 Admitted.
-
+  
 End Positive.
 
 Section MutatorCount.
@@ -200,7 +255,7 @@ Qed.
 
 Lemma m_plus_triml l1 l2 o f n :
   ~~ has (fun e => [&& kind e == T, fld e == f & source e == o]) l1 ->
-  M_plus (l1 ++ l2) o f n = M_plus (l2) o f n.
+  M_plus (l1 ++ l2) o f n = M_plus l2 o f n.
 Proof.
 move=>H.
 rewrite /M_plus !size_map prefix_catl/= filter_cat size_cat.
