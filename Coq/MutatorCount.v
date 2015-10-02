@@ -415,6 +415,7 @@ because of the following reasons:
    The proofs of these "trimming" lemmas should be explicitly
    constructed. So, for now see the previous statement
 
+
 *)
 
 Admitted. 
