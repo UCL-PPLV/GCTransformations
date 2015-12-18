@@ -24,6 +24,9 @@ The structure of the project:
 - ./Coq -- a Coq formalization of the collector's exposing functions
   and their correctness wrt. graph reachability
 
+---- Heaps -- a library of partial heaps, developed by Aleks Nanevski
+     (see http://software.imdea.org/fcsl for details).
+
 ---- Hgaphs.v -- a theory of object graphs, including facts about
      allocation/mutation.
 
