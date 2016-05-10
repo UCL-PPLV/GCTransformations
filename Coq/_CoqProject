@@ -1,0 +1,21 @@
+-R . ""
+Hgraphs.v
+Logs.v
+Wavefronts.v
+Apex.v
+Partitions.v
+WavefrontDimension.v
+MutatorCount.v
+PolicyDimension.v
+Heaps/coding.v
+Heaps/domain.v
+Heaps/finmap.v
+Heaps/heap.v
+Heaps/idynamic.v
+Heaps/ordtype.v
+Heaps/pcm.v
+Heaps/pperm.v
+Heaps/pred.v
+Heaps/prelude.v
+Heaps/spcm.v
+Heaps/unionmap.v
