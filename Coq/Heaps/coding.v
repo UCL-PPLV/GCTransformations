@@ -1,6 +1,8 @@
-Require Import Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat.
-Require Import Ssreflect.eqtype Ssreflect.fintype MathComp.finfun. 
-Require Import Ssreflect.ssrfun Ssreflect.seq Eqdep.
+From mathcomp.ssreflect
+Require Import ssreflect ssrbool ssrnat eqtype fintype ssrfun seq.
+From mathcomp
+Require Import finfun.
+Require Import Eqdep.
 Require Import pred prelude idynamic ordtype domain pcm spcm unionmap heap.
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -18,12 +20,12 @@ Unset Printing Implicit Defensive.
 Module SetType.
 
 Section ClassDef.
-Structure type : Type := Pack {sort : Type}. 
+Structure type : Type := Pack {sort : Type}.
 Local Coercion sort : type >-> Sortclass.
 
 Variables (T : Type) (cT : type).
 Definition pack := @Pack T.
-Definition clone := fun (_ : cT -> T) & phant_id pack cT => pack. 
+Definition clone := fun (_ : cT -> T) & phant_id pack cT => pack.
 End ClassDef.
 
 Module Exports.
@@ -62,30 +64,30 @@ Canonical arrSet (s1 s2 : set) := SET (s1 -> s2).
 (* One has to use Scheme command for that (check CPDT) *)
 
 (* small types *)
-Inductive st_code := 
+Inductive st_code :=
   st_unit | st_nat | st_bool | st_ptr | st_mtx | (* st_natfinset | *) (* nullary *)
   st_option of st_code | st_seq of st_code | (* unary *)
   st_prod of st_code & st_code | st_arr of st_code & st_code. (* binary *)
 
 (* small pcms, unused so far *)
-Inductive spcm_code := 
+Inductive spcm_code :=
   spcm_unit | spcm_nat | spcm_natmap of st_code | spcm_ptrmap of st_code |
   spcm_prod of spcm_code & spcm_code.
 
 (* general pcm's *)
-Inductive pcm_code := 
+Inductive pcm_code :=
   pcm_unit | pcm_nat | pcm_mtx | pcm_heap | pcm_natmap of st_code |
   pcm_ptrmap of st_code | pcm_prod of pcm_code & pcm_code.
 
 (* general types *)
-Inductive tp_code := 
+Inductive tp_code :=
   tp_unit | tp_nat | tp_bool | tp_ptr | tp_mtx | tp_heap | (* nullary *)
   tp_option of tp_code | tp_seq of tp_code | (* unary *)
-  tp_prod of tp_code & tp_code | tp_arr of tp_code & tp_code | (* binary *)   
+  tp_prod of tp_code & tp_code | tp_arr of tp_code & tp_code | (* binary *)
   tp_array of nat & pcm_code | tp_ptrmap of st_code.
 
 Fixpoint st_sort (x : st_code) : set :=
-  match x with 
+  match x with
   | st_unit => [set of unit]
   | st_nat => [set of nat]
   | st_bool => [set of bool]
@@ -98,8 +100,8 @@ Fixpoint st_sort (x : st_code) : set :=
   | st_arr y z => [set of st_sort y -> st_sort z]
   end.
 
-Fixpoint spcm_sort (x : spcm_code) : spcm := 
-  match x with 
+Fixpoint spcm_sort (x : spcm_code) : spcm :=
+  match x with
   | spcm_unit => unitSPCM
   | spcm_nat => natSPCM
   | spcm_natmap t2 => natmapSPCM (st_sort t2)
@@ -107,8 +109,8 @@ Fixpoint spcm_sort (x : spcm_code) : spcm :=
   | spcm_prod y z => prodSPCM (spcm_sort y) (spcm_sort z)
   end.
 
-Fixpoint pcm_sort (x : pcm_code) : pcm := 
-  match x with 
+Fixpoint pcm_sort (x : pcm_code) : pcm :=
+  match x with
   | pcm_unit => [pcm of unit]
   | pcm_nat => [pcm of nat]
   | pcm_mtx => [pcm of lift [unlifted of mutex]]
@@ -119,12 +121,12 @@ Fixpoint pcm_sort (x : pcm_code) : pcm :=
   end.
 
 Fixpoint tp_sort (x : tp_code) : Type :=
-  match x with 
+  match x with
   | tp_unit => unit
   | tp_nat => nat
   | tp_bool => bool
   | tp_ptr => ptr
-  | tp_mtx => mutex 
+  | tp_mtx => mutex
   | tp_heap => heap
   | tp_option y => option (tp_sort y)
   | tp_seq y => seq (tp_sort y)
@@ -136,8 +138,8 @@ Fixpoint tp_sort (x : tp_code) : Type :=
 
 (* deciding equality on each of these types *)
 
-Fixpoint st_eq x y := 
-  match x, y with 
+Fixpoint st_eq x y :=
+  match x, y with
   | st_unit, st_unit => true
   | st_nat, st_nat => true
   | st_bool, st_bool => true
@@ -146,17 +148,17 @@ Fixpoint st_eq x y :=
   (* | st_natfinset, st_natfinset => true *)
   | st_option x1, st_option y1 => st_eq x1 y1
   | st_seq x1, st_seq y1 => st_eq x1 y1
-  | st_prod x1 y1, st_prod x2 y2 => 
+  | st_prod x1 y1, st_prod x2 y2 =>
       st_eq x1 x2 && st_eq y1 y2
-  | st_arr x1 y1, st_arr x2 y2 => 
+  | st_arr x1 y1, st_arr x2 y2 =>
       st_eq x1 x2 && st_eq y1 y2
   | _, _ => false
   end.
 
-Fixpoint spcm_eq x y := 
-  match x, y with 
-  | spcm_unit, spcm_unit => true 
-  | spcm_nat, spcm_nat => true 
+Fixpoint spcm_eq x y :=
+  match x, y with
+  | spcm_unit, spcm_unit => true
+  | spcm_nat, spcm_nat => true
   | spcm_natmap t1, spcm_natmap t2 => st_eq t1 t2
   | spcm_ptrmap t1, spcm_ptrmap t2 => st_eq t1 t2
   | spcm_prod x1 y1, spcm_prod x2 y2 =>
@@ -164,11 +166,11 @@ Fixpoint spcm_eq x y :=
   | _, _ => false
   end.
 
-Fixpoint pcm_eq x y := 
-  match x, y with 
-  | pcm_unit, pcm_unit => true 
-  | pcm_nat, pcm_nat => true 
-  | pcm_mtx, pcm_mtx => true 
+Fixpoint pcm_eq x y :=
+  match x, y with
+  | pcm_unit, pcm_unit => true
+  | pcm_nat, pcm_nat => true
+  | pcm_mtx, pcm_mtx => true
   | pcm_heap, pcm_heap => true
   | pcm_natmap t1, pcm_natmap t2 => st_eq t1 t2
   | pcm_ptrmap t1, pcm_ptrmap t2 => st_eq t1 t2
@@ -177,8 +179,8 @@ Fixpoint pcm_eq x y :=
   | _, _ => false
   end.
 
-Fixpoint tp_eq x y := 
-  match x, y with 
+Fixpoint tp_eq x y :=
+  match x, y with
   | tp_unit, tp_unit => true
   | tp_nat, tp_nat => true
   | tp_bool, tp_bool => true
@@ -187,9 +189,9 @@ Fixpoint tp_eq x y :=
   | tp_heap, tp_heap => true
   | tp_option x1, tp_option y1 => tp_eq x1 y1
   | tp_seq x1, tp_seq y1 => tp_eq x1 y1
-  | tp_prod x1 y1, tp_prod x2 y2 => 
+  | tp_prod x1 y1, tp_prod x2 y2 =>
       tp_eq x1 x2 && tp_eq y1 y2
-  | tp_arr x1 y1, tp_arr x2 y2 => 
+  | tp_arr x1 y1, tp_arr x2 y2 =>
       tp_eq x1 x2 && tp_eq y1 y2
   | tp_array n1 y1, tp_array n2 y2 =>
       (n1 == n2) && (pcm_eq y1 y2)
@@ -202,17 +204,17 @@ Fixpoint tp_eq x y :=
 
 Lemma st_eqP : Equality.axiom st_eq.
 Proof.
-elim; 
+elim;
 (* nullaries *)
 try by [case; constructor];
 (* unaries *)
-try by 
+try by
   [move=>x IH; case; try by [constructor];
    move=>y; apply: iffP (IH y) _ _; [move=>-> | case]];
 (* binaries *)
 by [move=>x1 IHx y1 IHy; case; try by [constructor];
     move=>x2 y2 /=; apply: iffP andP _ _;
-    case; move/IHx=>->; move/IHy=>->]. 
+    case; move/IHx=>->; move/IHy=>->].
 Qed.
 
 Lemma spcm_eqP : Equality.axiom spcm_eq.
@@ -220,9 +222,9 @@ Proof.
 elim;
 try by [case; constructor].
 - move=>t; case=>/=; try constructor=>//; move=>y.
-  by case: st_eqP=>[->|H]; constructor=>//; case. 
+  by case: st_eqP=>[->|H]; constructor=>//; case.
 - move=>t; case=>/=; try constructor=>//; move=>y.
-  by case: st_eqP=>[->|H]; constructor=>//; case. 
+  by case: st_eqP=>[->|H]; constructor=>//; case.
 by [move=>x1 IHx y1 IHy; case; try by [constructor];
     move=>x2 y2 /=; apply: iffP andP _ _;
     case; move/IHx=>->; move/IHy=>->].
@@ -247,20 +249,20 @@ elim;
 (* nullaries *)
 try by [case; constructor];
 (* unaries *)
-try by 
+try by
   [move=>x IH; case; try by [constructor];
    move=>y; apply: iffP (IH y) _ _; [move=>-> | case]];
 (* binaries *)
 try by [move=>x1 IHx y1 IHy; case; try by [constructor];
     move=>x2 y2 /=; apply: iffP andP _ _;
-    case; move/IHx=>->; move/IHy=>->]. 
+    case; move/IHx=>->; move/IHy=>->].
 (* array case *)
-move=>n1 p1 []; try by [constructor]. 
+move=>n1 p1 []; try by [constructor].
 move=>n2 p2 /=; case: eqP=>[->|H]; last by constructor; case.
-by case: pcm_eqP=>[->|H]; constructor=>//; case. 
+by case: pcm_eqP=>[->|H]; constructor=>//; case.
 (* map case *)
 move=>s1 []; try by [constructor].
-by move=>s2 /=; case: st_eqP=>[->|H]; constructor=>//; case. 
+by move=>s2 /=; case: st_eqP=>[->|H]; constructor=>//; case.
 Qed.
 
 (* declaration of equality structures *)
@@ -284,7 +286,7 @@ Module Code.
 
 Structure mixin_of (T : Type) := Mixin {
   code_dom_op : eqType;
-  encode_op : code_dom_op -> T; 
+  encode_op : code_dom_op -> T;
   to_type_op : T -> Type}.
 
 Section ClassDef.
@@ -298,10 +300,10 @@ Variables (T : Type) (cT : type).
 Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
 
 Definition pack c := @Pack T c T.
-Definition clone := fun c & cT -> T & phant_id (pack c) cT => pack c. 
+Definition clone := fun c & cT -> T & phant_id (pack c) cT => pack c.
 
 Definition code_dom := code_dom_op class.
-Definition encode := @encode_op _ class. 
+Definition encode := @encode_op _ class.
 Definition to_type := to_type_op class.
 
 End ClassDef.
@@ -340,7 +342,7 @@ Export Code.Exports.
 Definition set_codeMixin := codeMixin st_code_eqType st_sort SetType.sort.
 Canonical setCode := Code set set_codeMixin.
 
-Definition spcm_codeMixin := codeMixin spcm_code_eqType spcm_sort SPCM.sort. 
+Definition spcm_codeMixin := codeMixin spcm_code_eqType spcm_sort SPCM.sort.
 Canonical spcmCode := Code spcm spcm_codeMixin.
 
 Definition pcm_codeMixin := codeMixin pcm_code_eqType pcm_sort PCM.sort.
@@ -350,18 +352,18 @@ Definition type_codeMixin := codeMixin tp_code_eqType tp_sort id.
 Canonical typeCode := Code Type type_codeMixin.
 
 (*********************************************)
-(* Computing code instance for a PCM or type *) 
+(* Computing code instance for a PCM or type *)
 (*********************************************)
 
 (* this is a canonical structure setup that inverts the interp function. *)
 (* important so that we avoid excesive pcm_code or tp_code annotations. *)
 
-Module Encoded. 
+Module Encoded.
 Section Encoded.
 Variable C : code.
 
 Structure mixin_of (v : C) := Mixin {
-  decode_op : code_dom C; 
+  decode_op : code_dom C;
   _ : encode decode_op = v}.
 
 Section ClassDef.
@@ -376,8 +378,8 @@ Definition class := let: Pack _ c _ as cT' := cT return class_of cT' in c.
 
 Definition pack c := @Pack v c v.
 
-Definition clone := 
-  fun c & to_type cT -> to_type v & phant_id (pack c) cT => pack c. 
+Definition clone :=
+  fun c & to_type cT -> to_type v & phant_id (pack c) cT => pack c.
 
 Definition decode := decode_op class.
 
@@ -402,18 +404,18 @@ Implicit Type U : encoded C.
 (* as the rewriting gets in trouble with dependencies *)
 (* the solution is to break up U, just like in proof below *)
 
-Lemma encdecE U : encode (decode U) = U. 
+Lemma encdecE U : encode (decode U) = U.
 Proof. by case: U=>tp []. Qed.
 
 Lemma decode_inj U1 U2 : decode U1 = decode U2 -> U1 = U2 :> C.
-Proof. 
+Proof.
 case: U1=>s1 [dec1 pf1 t1]; case: U2=>s2 [dec2 pf2 t2] /=.
 by rewrite /decode /= -pf1 -pf2=>->.
 Qed.
 
-Definition code_dyn U (v : to_type U) := 
-  @idyn (code_dom C) (to_type \o encode) (decode U) 
-                     (icoerce to_type v (esym (encdecE U))). 
+Definition code_dyn U (v : to_type U) :=
+  @idyn (code_dom C) (to_type \o encode) (decode U)
+                     (icoerce to_type v (esym (encdecE U))).
 
 (* every idynamic can be recast into a code_dyn form *)
 
@@ -421,7 +423,7 @@ Section CodeEta.
 Variable u : idynamic (to_type \o @encode C).
 
 Definition code_enc : encoded C :=
-  let: v := encode (idyn_tp u) in 
+  let: v := encode (idyn_tp u) in
   let: m := @encodeMixin C v (idyn_tp u) (erefl _) in
     Encode C v m.
 
@@ -477,11 +479,11 @@ Definition encoded_sort_set : encoded_set -> set :=
   fun U => Encoded.sort U.
 Coercion encoded_sort_set : encoded_set >-> set.
 
-Definition encoded_sort_spcm : encoded_spcm -> spcm := 
+Definition encoded_sort_spcm : encoded_spcm -> spcm :=
   fun U => Encoded.sort U.
 Coercion encoded_sort_spcm : encoded_spcm >-> spcm.
 
-Definition encoded_sort_pcm : encoded_pcm -> pcm := 
+Definition encoded_sort_pcm : encoded_pcm -> pcm :=
   fun U => Encoded.sort U.
 Coercion encoded_sort_pcm : encoded_pcm >-> pcm.
 
@@ -491,8 +493,8 @@ Coercion encoded_sort_type : encoded_type >-> Sortclass.
 
 (* Can I coerce spcms to pcms? *)
 
-Fixpoint spcm_to_pcm (x : spcm_code) : pcm_code := 
-  match x with 
+Fixpoint spcm_to_pcm (x : spcm_code) : pcm_code :=
+  match x with
   | spcm_unit => pcm_unit
   | spcm_nat => pcm_nat
   | spcm_natmap t2 => pcm_natmap t2
@@ -500,17 +502,17 @@ Fixpoint spcm_to_pcm (x : spcm_code) : pcm_code :=
   | spcm_prod y z => pcm_prod (spcm_to_pcm y) (spcm_to_pcm z)
   end.
 
-Lemma spcm_pcm_pf (V : encoded_spcm) : 
+Lemma spcm_pcm_pf (V : encoded_spcm) :
         @encode pcmCode (spcm_to_pcm (decode V)) = V.
 Proof.
 case: V=>V [d E /=] s; rewrite /decode /= -{}E /encode.
-elim: d=>[||d|d|/= s1 -> s2 ->]; 
+elim: d=>[||d|d|/= s1 -> s2 ->];
 by congr PCM.pack; congr PCM.Mixin; try apply: proof_irrelevance.
 Qed.
 
-Definition spcm_pcm_encodedMixin (V : encoded_spcm) := 
+Definition spcm_pcm_encodedMixin (V : encoded_spcm) :=
   encodeMixinPCM V (spcm_to_pcm (decode V)) (spcm_pcm_pf V).
-Canonical spcm_pcm_Encoded (V : encoded_spcm) := 
+Canonical spcm_pcm_Encoded (V : encoded_spcm) :=
   EncodePCM V (spcm_pcm_encodedMixin V).
 
 Coercion spcm_pcm_Encoded : encoded_spcm >-> encoded_pcm.
@@ -520,7 +522,7 @@ Coercion spcm_pcm_Encoded : encoded_spcm >-> encoded_pcm.
 Definition pcm_dyn (U : encoded_pcm) (v : U) := @code_dyn pcmCode U v.
 
 Section PCMEta.
-Variable u : idynamic (to_type \o pcm_sort). 
+Variable u : idynamic (to_type \o pcm_sort).
 
 Definition pcm_enc : encoded_pcm := @code_enc pcmCode u.
 Definition pcm_val : pcm_enc := @code_val pcmCode u.
@@ -548,58 +550,58 @@ Definition mtx_st_encodedMixin := encodeMixinST mutexSet st_mtx (erefl _).
 Canonical mtx_st_Encoded := EncodeST mutexSet mtx_st_encodedMixin.
 
 (*
-Definition natfinset_st_encodedMixin := 
+Definition natfinset_st_encodedMixin :=
   encodeMixinST natfinsetSet st_natfinset (erefl _).
 Canonical natfinset_st_Encoded := EncodeST natfinsetSet natfinset_st_encodedMixin.
 *)
 
-Lemma option_st_pf (U : encoded_set) : 
+Lemma option_st_pf (U : encoded_set) :
         @encode setCode (st_option (decode U)) = optionSet U.
 Proof. by rewrite /decode; case: U=>st [/= dp <-]. Qed.
 
-Definition option_st_encodedMixin (U : encoded_set) := 
+Definition option_st_encodedMixin (U : encoded_set) :=
   encodeMixin setCode (optionSet U) (st_option (decode U)) (option_st_pf U).
-Canonical option_st_Encoded (U : encoded_set) := 
+Canonical option_st_Encoded (U : encoded_set) :=
   EncodeST (optionSet U) (option_st_encodedMixin U).
 
-Lemma seq_st_pf (U : encoded_set) : 
+Lemma seq_st_pf (U : encoded_set) :
         @encode setCode (st_seq (decode U)) = seqSet U.
 Proof. by rewrite /decode; case: U=>st [/= dp <-]. Qed.
 
-Definition seq_st_encodedMixin (U : encoded_set) := 
+Definition seq_st_encodedMixin (U : encoded_set) :=
   encodeMixin setCode (seqSet U) (st_seq (decode U)) (seq_st_pf U).
-Canonical seq_st_Encoded (U : encoded_set) := 
+Canonical seq_st_Encoded (U : encoded_set) :=
   EncodeST (seqSet U) (seq_st_encodedMixin U).
 
-Lemma prod_st_pf (U1 U2 : encoded_set) : 
-        @encode setCode (st_prod (decode U1) (decode U2)) = prodSet U1 U2. 
+Lemma prod_st_pf (U1 U2 : encoded_set) :
+        @encode setCode (st_prod (decode U1) (decode U2)) = prodSet U1 U2.
 Proof. by rewrite /decode; case: U1 U2=>t1 [/= ? <-] _ [t2 [/= ? <-]]. Qed.
 
-Definition prod_st_encodedMixin (U1 U2 : encoded_set) := 
+Definition prod_st_encodedMixin (U1 U2 : encoded_set) :=
   encodeMixinST (prodSet U1 U2)
                 (st_prod (decode U1) (decode U2)) (prod_st_pf U1 U2).
-Canonical prod_st_Encoded (U1 U2 : encoded_set) := 
+Canonical prod_st_Encoded (U1 U2 : encoded_set) :=
   EncodeST (prodSet U1 U2) (prod_st_encodedMixin U1 U2).
 
 (* this one is kinda pointless since we can't trigger inference of lambda's *)
 (* so functions will have to be decorated with their types by hand *)
 
-Lemma arr_st_pf (U1 U2 : encoded_set) : 
-        @encode setCode (st_arr (decode U1) (decode U2)) = arrSet U1 U2. 
+Lemma arr_st_pf (U1 U2 : encoded_set) :
+        @encode setCode (st_arr (decode U1) (decode U2)) = arrSet U1 U2.
 Proof. by rewrite /decode; case: U1 U2=>t1 [/= ? <-] _ [t2 [/= ? <-]]. Qed.
 
-Definition arr_st_encodedMixin (U1 U2 : encoded_set) := 
+Definition arr_st_encodedMixin (U1 U2 : encoded_set) :=
   encodeMixinST (arrSet U1 U2) (st_arr (decode U1) (decode U2)) (arr_st_pf U1 U2).
-Canonical arr_st_Encoded (U1 U2 : encoded_set) := 
+Canonical arr_st_Encoded (U1 U2 : encoded_set) :=
   EncodeST (arrSet U1 U2) (arr_st_encodedMixin U1 U2).
 
 (*
-Notation "[ 'encoded_set' 'of' v ]" := 
+Notation "[ 'encoded_set' 'of' v ]" :=
   ([encoded setCode of [set of v]])
   (at level 0, format "[ 'encoded_set'  'of'  v ]") : form_scope.
 *)
 
-Definition set_clone v cT c b1 b2 : encoded_set := 
+Definition set_clone v cT c b1 b2 : encoded_set :=
   @Encoded.clone setCode v cT c b1 b2.
 
 Notation "[ 'encoded_set' 'of' v ]" := (@set_clone [set of v] _ _ idfun id)
@@ -627,73 +629,73 @@ Canonical mtx_tp_Encoded := EncodeTP mutex mtx_tp_encodedMixin.
 Definition heap_tp_encodedMixin := encodeMixinTP heap tp_heap (erefl _).
 Canonical heap_tp_Encoded := EncodeTP heap heap_tp_encodedMixin.
 
-Lemma option_tp_pf (U : encoded_type) : 
+Lemma option_tp_pf (U : encoded_type) :
         @encode typeCode (tp_option (decode U)) = option U.
 Proof. by rewrite /decode; case: U=>tp [/= dp <-]. Qed.
 
-Definition option_tp_encodedMixin (U : encoded_type) := 
+Definition option_tp_encodedMixin (U : encoded_type) :=
   encodeMixin typeCode (option U) (tp_option (decode U)) (option_tp_pf U).
-Canonical option_tp_Encoded (U : encoded_type) := 
+Canonical option_tp_Encoded (U : encoded_type) :=
   EncodeTP (option U) (option_tp_encodedMixin U).
 
-Lemma seq_tp_pf (U : encoded_type) : 
+Lemma seq_tp_pf (U : encoded_type) :
         @encode typeCode (tp_seq (decode U)) = seq U.
 Proof. by rewrite /decode; case: U=>tp [/= dp <-]. Qed.
 
-Definition seq_tp_encodedMixin (U : encoded_type) := 
+Definition seq_tp_encodedMixin (U : encoded_type) :=
   encodeMixin typeCode (seq U) (tp_seq (decode U)) (seq_tp_pf U).
-Canonical seq_tp_Encoded (U : encoded_type) := 
+Canonical seq_tp_Encoded (U : encoded_type) :=
   EncodeTP (seq U) (seq_tp_encodedMixin U).
 
-Lemma prod_tp_pf (U1 U2 : encoded_type) : 
-        @encode typeCode (tp_prod (decode U1) (decode U2)) = prod U1 U2. 
+Lemma prod_tp_pf (U1 U2 : encoded_type) :
+        @encode typeCode (tp_prod (decode U1) (decode U2)) = prod U1 U2.
 Proof. by rewrite /decode; case: U1 U2=>t1 [/= ? <-] _ [t2 [/= ? <-]]. Qed.
 
-Definition prod_tp_encodedMixin (U1 U2 : encoded_type) := 
+Definition prod_tp_encodedMixin (U1 U2 : encoded_type) :=
   encodeMixinTP (prod U1 U2)
                 (tp_prod (decode U1) (decode U2)) (prod_tp_pf U1 U2).
-Canonical prod_tp_Encoded (U1 U2 : encoded_type) := 
+Canonical prod_tp_Encoded (U1 U2 : encoded_type) :=
   EncodeTP (prod U1 U2) (prod_tp_encodedMixin U1 U2).
 
 (* this one is kinda pointless since we can't trigger inference of lambda's *)
 (* so functions will have to be decorated with their types by hand *)
 
-Lemma arr_tp_pf (U1 U2 : encoded_type) : 
-        @encode typeCode (tp_arr (decode U1) (decode U2)) = (U1 -> U2). 
+Lemma arr_tp_pf (U1 U2 : encoded_type) :
+        @encode typeCode (tp_arr (decode U1) (decode U2)) = (U1 -> U2).
 Proof. by rewrite /decode; case: U1 U2=>t1 [/= ? <-] _ [t2 [/= ? <-]]. Qed.
 
-Definition arr_tp_encodedMixin (U1 U2 : encoded_type) := 
+Definition arr_tp_encodedMixin (U1 U2 : encoded_type) :=
   encodeMixinTP (U1 -> U2) (tp_arr (decode U1) (decode U2)) (arr_tp_pf U1 U2).
-Canonical arr_tp_Encoded (U1 U2 : encoded_type) := 
+Canonical arr_tp_Encoded (U1 U2 : encoded_type) :=
   EncodeTP (U1 -> U2) (arr_tp_encodedMixin U1 U2).
 
-Lemma array_tp_pf (n : nat) (U : encoded_pcm) : 
+Lemma array_tp_pf (n : nat) (U : encoded_pcm) :
         @encode typeCode (tp_array n (decode U)) = {ffun 'I_n -> U}.
 Proof. by rewrite /decode; case: U=>t [/= d <- _]. Qed.
 
-Definition array_tp_encodedMixin n (U : encoded_pcm) := 
+Definition array_tp_encodedMixin n (U : encoded_pcm) :=
   encodeMixinTP {ffun 'I_n -> U}
                 (tp_array n (decode U)) (array_tp_pf n U).
 Canonical array_tp_Encoded n (U : encoded_pcm) :=
   EncodeTP {ffun 'I_n -> U} (array_tp_encodedMixin n U).
 
-Lemma ptrmap_tp_pf (V : encoded_set) : 
+Lemma ptrmap_tp_pf (V : encoded_set) :
         @encode typeCode (tp_ptrmap (decode V)) = union_map ptr_ordType V.
 Proof. by rewrite /decode; case: V=>t [/= d <- _]. Qed.
 
-Definition ptrmap_tp_encodedMixin (V : encoded_set) := 
-  encodeMixinTP (union_map ptr_ordType V) (tp_ptrmap (decode V)) 
+Definition ptrmap_tp_encodedMixin (V : encoded_set) :=
+  encodeMixinTP (union_map ptr_ordType V) (tp_ptrmap (decode V))
                 (ptrmap_tp_pf V).
 Canonical ptrmap_tp_Encoded (V : encoded_set) :=
   EncodeTP (union_map ptr_ordType V) (ptrmap_tp_encodedMixin V).
 
 (*
-Notation "[ 'encoded_type' 'of' v ]" := 
+Notation "[ 'encoded_type' 'of' v ]" :=
   ([encoded typeCode of v])
   (at level 0, format "[ 'encoded_type'  'of'  v ]") : form_scope.
 *)
 
-Definition type_clone v cT c b1 b2 : encoded_type := 
+Definition type_clone v cT c b1 b2 : encoded_type :=
   @Encoded.clone typeCode v cT c b1 b2.
 
 Notation "[ 'encoded_type' 'of' v ]" := (@type_clone v _ _ idfun id)
@@ -709,55 +711,55 @@ Canonical unit_pcm_Encoded := EncodePCM unitPCM unit_pcm_encodedMixin.
 Definition nat_pcm_encodedMixin := encodeMixinPCM natPCM pcm_nat (erefl _).
 Canonical nat_pcm_Encoded := EncodePCM natPCM nat_pcm_encodedMixin.
 
-Definition mtx_pcm_encodedMixin := 
+Definition mtx_pcm_encodedMixin :=
   encodeMixinPCM (liftPCM mutexUnlifted) pcm_mtx (erefl _).
-Canonical mtx_pcm_Encoded := 
+Canonical mtx_pcm_Encoded :=
   EncodePCM (liftPCM mutexUnlifted) mtx_pcm_encodedMixin.
 
 Definition heap_pcm_encodedMixin := encodeMixinPCM heapPCM pcm_heap (erefl _).
 Canonical heap_pcm_Encoded := EncodePCM heapPCM heap_pcm_encodedMixin.
 
-Lemma natmap_pcm_pf (V : encoded_set) : 
+Lemma natmap_pcm_pf (V : encoded_set) :
         @encode pcmCode (pcm_natmap (decode V)) = union_mapPCM nat_ordType V.
 Proof. by rewrite /decode; case: V=>_ [/= ? <-]. Qed.
 
-Definition natmap_pcm_encodedMixin (V : encoded_set) := 
-  encodeMixinPCM (union_mapPCM nat_ordType V) (pcm_natmap (decode V)) 
-                 (natmap_pcm_pf V). 
-Canonical natmap_pcm_Encoded (V : encoded_set) := 
+Definition natmap_pcm_encodedMixin (V : encoded_set) :=
+  encodeMixinPCM (union_mapPCM nat_ordType V) (pcm_natmap (decode V))
+                 (natmap_pcm_pf V).
+Canonical natmap_pcm_Encoded (V : encoded_set) :=
   EncodePCM (union_mapPCM nat_ordType V) (natmap_pcm_encodedMixin V).
 
-Lemma ptrmap_pcm_pf (V : encoded_set) : 
+Lemma ptrmap_pcm_pf (V : encoded_set) :
         @encode pcmCode (pcm_ptrmap (decode V)) = union_mapPCM ptr_ordType V.
 Proof. by rewrite /decode; case: V=>_ [/= ? <-]. Qed.
 
-Definition ptrmap_pcm_encodedMixin (V : encoded_set) := 
-  encodeMixinPCM (union_mapPCM ptr_ordType V) (pcm_ptrmap (decode V)) 
+Definition ptrmap_pcm_encodedMixin (V : encoded_set) :=
+  encodeMixinPCM (union_mapPCM ptr_ordType V) (pcm_ptrmap (decode V))
                  (ptrmap_pcm_pf V).
 (* this one overlaps with natmap, so i have to assign it by hand *)
 (* it can't be canonical *)
 (* this should be fixed by assigning dedicated names to these *)
 (* unionmap types; e.g. specifically like natmap and ptrmap *)
-Definition ptrmap_pcm_Encoded (V : encoded_set) := 
+Definition ptrmap_pcm_Encoded (V : encoded_set) :=
   EncodePCM (union_mapPCM ptr_ordType V) (ptrmap_pcm_encodedMixin V).
 
-Lemma prod_pcm_pf (U1 U2 : encoded_pcm) : 
-        @encode pcmCode (pcm_prod (decode U1) (decode U2)) = prodPCM U1 U2. 
+Lemma prod_pcm_pf (U1 U2 : encoded_pcm) :
+        @encode pcmCode (pcm_prod (decode U1) (decode U2)) = prodPCM U1 U2.
 Proof. by rewrite /decode; case: U1 U2=>t1 [/= ? <-] _ [t2 [/= ? <-]]. Qed.
 
-Definition prod_pcm_encodedMixin (U1 U2 : encoded_pcm) := 
-  encodeMixinPCM (prodPCM U1 U2) 
+Definition prod_pcm_encodedMixin (U1 U2 : encoded_pcm) :=
+  encodeMixinPCM (prodPCM U1 U2)
                  (pcm_prod (decode U1) (decode U2)) (prod_pcm_pf U1 U2).
-Canonical prod_pcm_Encoded (U1 U2 : encoded_pcm) := 
+Canonical prod_pcm_Encoded (U1 U2 : encoded_pcm) :=
   EncodePCM (prodPCM U1 U2) (prod_pcm_encodedMixin U1 U2).
 
 (*
-Notation "[ 'encoded_pcm' 'of' v ]" := 
+Notation "[ 'encoded_pcm' 'of' v ]" :=
   ([encoded pcmCode of [pcm of v]])
   (at level 0, format "[ 'encoded_pcm'  'of'  v ]") : form_scope.
 *)
 
-Definition pcm_clone v cT c b1 b2 : encoded_pcm := 
+Definition pcm_clone v cT c b1 b2 : encoded_pcm :=
   @Encoded.clone pcmCode v cT c b1 b2.
 
 Notation "[ 'encoded_pcm' 'of' v ]" := (@pcm_clone [pcm of v] _ _ idfun id)
@@ -768,60 +770,60 @@ Notation "[ 'encoded_pcm' 'of' v ]" := (@pcm_clone [pcm of v] _ _ idfun id)
 (* inversion table for spcms *)
 (*****************************)
 
-Definition unit_spcm_encodedMixin := 
+Definition unit_spcm_encodedMixin :=
   encodeMixinSPCM unitSPCM spcm_unit (erefl _).
 Canonical unit_spcm_Encoded := EncodeSPCM unitSPCM unit_spcm_encodedMixin.
 
 Definition nat_spcm_encodedMixin := encodeMixinSPCM natSPCM spcm_nat (erefl _).
 Canonical nat_spcm_Encoded := EncodeSPCM natSPCM nat_spcm_encodedMixin.
 
-Lemma natmap_spcm_pf (V : encoded_set) : 
+Lemma natmap_spcm_pf (V : encoded_set) :
         @encode spcmCode (spcm_natmap (decode V)) = natmapSPCM V.
 Proof. by rewrite /decode; case: V=>_ [/= ? <-]. Qed.
 
-Definition natmap_spcm_encodedMixin (V : encoded_set) := 
-  encodeMixinSPCM (natmapSPCM V) (spcm_natmap (decode V)) 
+Definition natmap_spcm_encodedMixin (V : encoded_set) :=
+  encodeMixinSPCM (natmapSPCM V) (spcm_natmap (decode V))
                   (natmap_spcm_pf V).
-Canonical natmap_spcm_Encoded (V : encoded_set) := 
+Canonical natmap_spcm_Encoded (V : encoded_set) :=
   EncodeSPCM (natmapSPCM V) (natmap_spcm_encodedMixin V).
 
-Lemma ptrmap_spcm_pf (V : encoded_set) : 
+Lemma ptrmap_spcm_pf (V : encoded_set) :
         @encode spcmCode (spcm_ptrmap (decode V)) = ptrmapSPCM V.
 Proof. by rewrite /decode; case: V=>_ [/= ? <-]. Qed.
 
-Definition ptrmap_spcm_encodedMixin (V : encoded_set) := 
-  encodeMixinSPCM (ptrmapSPCM V) (spcm_ptrmap (decode V)) 
+Definition ptrmap_spcm_encodedMixin (V : encoded_set) :=
+  encodeMixinSPCM (ptrmapSPCM V) (spcm_ptrmap (decode V))
                   (ptrmap_spcm_pf V).
-Canonical ptrmap_spcm_Encoded (V : encoded_set) := 
+Canonical ptrmap_spcm_Encoded (V : encoded_set) :=
   EncodeSPCM (ptrmapSPCM V) (ptrmap_spcm_encodedMixin V).
 
 
-Lemma prod_spcm_pf (U1 U2 : encoded_spcm) : 
-        @encode spcmCode (spcm_prod (decode U1) (decode U2)) = prodSPCM U1 U2. 
+Lemma prod_spcm_pf (U1 U2 : encoded_spcm) :
+        @encode spcmCode (spcm_prod (decode U1) (decode U2)) = prodSPCM U1 U2.
 Proof. by rewrite /decode; case: U1 U2=>t1 [/= ? <-] _ [t2 [/= ? <-]]. Qed.
 
-Definition prod_spcm_encodedMixin (U1 U2 : encoded_spcm) := 
-  encodeMixinSPCM (prodSPCM U1 U2) 
+Definition prod_spcm_encodedMixin (U1 U2 : encoded_spcm) :=
+  encodeMixinSPCM (prodSPCM U1 U2)
                   (spcm_prod (decode U1) (decode U2)) (prod_spcm_pf U1 U2).
-Canonical prod_spcm_Encoded (U1 U2 : encoded_spcm) := 
+Canonical prod_spcm_Encoded (U1 U2 : encoded_spcm) :=
   EncodeSPCM (prodSPCM U1 U2) (prod_spcm_encodedMixin U1 U2).
 
 (*
-Notation "[ 'encoded_spcm' 'of' v ]" := 
+Notation "[ 'encoded_spcm' 'of' v ]" :=
   ([encoded spcmCode of [spcm of v]])
   (at level 0, format "[ 'encoded_spcm'  'of'  v ]") : form_scope.
 *)
 
-Definition spcm_clone v cT c b1 b2 : encoded_spcm := 
+Definition spcm_clone v cT c b1 b2 : encoded_spcm :=
   @Encoded.clone spcmCode v cT c b1 b2.
 
 Notation "[ 'encoded_spcm' 'of' v ]" := (@spcm_clone [spcm of v] _ _ idfun id)
   (at level 0, format "[ 'encoded_spcm'  'of'  v ]") : form_scope.
 
 (*
-Print Canonical Projections. 
+Print Canonical Projections.
 Check [encoded pcmCode of natPCM].
-Check [encoded_spcm of nat]. 
+Check [encoded_spcm of nat].
 Check [encoded_set of fset _].
 Check [encoded_pcm of heap].
 Check [encoded_set of nat].

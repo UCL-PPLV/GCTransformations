@@ -1,6 +1,7 @@
-Require Import Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat.
-Require Import Ssreflect.eqtype Ssreflect.ssrfun Ssreflect.seq.
-Require Import MathComp.path.
+From mathcomp.ssreflect
+Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq.
+From mathcomp
+Require Import path.
 Require Import Eqdep pred prelude idynamic ordtype pcm finmap unionmap heap coding. 
 Require Import Hgraphs Logs Wavefronts Apex Partitions.
 Set Implicit Arguments. 

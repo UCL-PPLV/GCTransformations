@@ -1,13 +1,11 @@
-MODULES := Hgraphs Logs Wavefronts Apex Partitions WavefrontDimension MutatorCount PolicyDimension
+default: Makefile.coq
+	make -f Makefile.coq
 
-RELEASE := $(MODULES:%=%.v) Makefile Makefile.build
+clean: Makefile.coq
+	make -f Makefile.coq clean
+	rm -f Makefile.coq
 
-ssr.pname := ${COQTOP}/lib/coq/user-contrib/Ssreflect
-ssr.lname := Ssreflect
-mathcomp.pname := ${COQTOP}/lib/coq/user-contrib/MathComp
-mathcomp.lname := MathComp
-COQLIBS := ssr mathcomp
+Makefile.coq: _CoqProject
+	coq_makefile -f _CoqProject > Makefile.coq
 
-include Makefile.build
-
-all: coq
+.PHONY: default clean

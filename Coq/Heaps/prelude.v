@@ -1,5 +1,6 @@
-Require Import Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat. 
-Require Import Ssreflect.eqtype Ssreflect.ssrfun Ssreflect.seq pred.
+From mathcomp.ssreflect
+Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq.
+Require Import pred.
 Require Import Eqdep ClassicalFacts.
 Set Implicit Arguments.
 Unset Strict Implicit.
@@ -11,16 +12,16 @@ Unset Printing Implicit Defensive.
 
 (* extensionality is needed for domains *)
 Axiom pext : forall p1 p2 : Prop, (p1 <-> p2) -> p1 = p2.
-Axiom fext : forall A (B : A -> Type) (f1 f2 : forall x, B x), 
+Axiom fext : forall A (B : A -> Type) (f1 f2 : forall x, B x),
                (forall x, f1 x = f2 x) -> f1 = f2.
 
 Lemma proof_irrelevance (P : Prop) (p1 p2 : P) : p1 = p2.
 Proof. by apply: ext_prop_dep_proof_irrel_cic; apply: pext. Qed.
 
 Lemma eta A (B : A -> Type) (f : forall x, B x) : f = [eta f].
-Proof. by apply: fext. Qed.   
+Proof. by apply: fext. Qed.
 
-Lemma ext A (B : A -> Type) (f1 f2 : forall x, B x) : 
+Lemma ext A (B : A -> Type) (f1 f2 : forall x, B x) :
         f1 = f2 -> forall x, f1 x = f2 x.
 Proof. by move=>->. Qed.
 
@@ -47,7 +48,7 @@ Prenex Implicits inj_pair2.
 
 Lemma inj_sval A P : injective (@sval A P).
 Proof.
-move=>[x Hx][y Hy] /= H; move: Hx Hy; rewrite H=>*. 
+move=>[x Hx][y Hy] /= H; move: Hx Hy; rewrite H=>*.
 congr exist; apply: proof_irrelevance.
 Qed.
 
@@ -60,10 +61,10 @@ Proof. by []. Qed.
 
 (* inferrable reflexivity axiom *)
 Definition erefli A (x : A) := erefl x.
-Arguments erefli [A x]. 
+Arguments erefli [A x].
 
 (* selecting a list element *)
-(* should really be in seq.v *) 
+(* should really be in seq.v *)
 
 Section HasSelect.
 Variables (A : eqType) (p : pred A).
@@ -87,7 +88,7 @@ End HasSelect.
 (* operations on functions *)
 (***************************)
 
-Lemma compA A B C D (h : A -> B) (g : B -> C) (f : C -> D) : 
+Lemma compA A B C D (h : A -> B) (g : B -> C) (f : C -> D) :
         (f \o g) \o h = f \o (g \o h).
 Proof. by []. Qed.
 

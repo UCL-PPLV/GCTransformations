@@ -1,6 +1,7 @@
-Require Import Ssreflect.ssreflect Ssreflect.ssrbool Ssreflect.ssrnat.
-Require Import Ssreflect.eqtype Ssreflect.ssrfun Ssreflect.seq.
-Require Import MathComp.path.
+From mathcomp.ssreflect
+Require Import ssreflect ssrbool ssrnat eqtype ssrfun seq.
+From mathcomp
+Require Import path.
 Require Import Eqdep pred prelude idynamic ordtype pcm finmap unionmap heap coding. 
 Require Import Hgraphs Logs Wavefronts.
 Require Import WavefrontDimension.
@@ -322,12 +323,6 @@ Qed.
    always forms a positive sequence. In other words, we need to prove
    that each such log (starting from the corresponding T-entry is a
    subject of PositiveSeq). *)
-
-
-
-
-
-
 
 
 (* A T-entry e records exactly the new value of a MA-entry *)
