@@ -150,45 +150,45 @@ Definition hasPrePos {A : eqType} (pos neg : A -> bool) (l : seq A) :=
 
 (* TODO: Start here! *)
 
-Lemma tryOurLemma {A : eqType} (pos neg : A -> bool) (l: seq A) : 
-  PositiveSeqLarge pos neg l.
-Proof.
-elim/last_ind: l=>[|l e Hi]; first by constructor 1.
-case X: (neg e); last first. 
-- case: Hi=>[H|en ep l1 l2 l3 E N P H1 H2 Hi].
-  - by constructor 1; rewrite -cats1 has_cat/= X; rewrite orbC/=.
-  - apply: (@NegSplit _ pos neg (rcons l e) en ep l1 (rcons l2 e) l3)=>//.
-    - by rewrite E rcons_cat rcons_cons rcons_cat rcons_cons.
-    by rewrite -cats1 has_cat /= X orbC.
+(* Lemma tryOurLemma {A : eqType} (pos neg : A -> bool) (l: seq A) :  *)
+(*   PositiveSeqLarge pos neg l. *)
+(* Proof. *)
+(* elim/last_ind: l=>[|l e Hi]; first by constructor 1. *)
+(* case X: (neg e); last first.  *)
+(* - case: Hi=>[H|en ep l1 l2 l3 E N P H1 H2 Hi]. *)
+(*   - by constructor 1; rewrite -cats1 has_cat/= X; rewrite orbC/=. *)
+(*   - apply: (@NegSplit _ pos neg (rcons l e) en ep l1 (rcons l2 e) l3)=>//. *)
+(*     - by rewrite E rcons_cat rcons_cons rcons_cat rcons_cons. *)
+(*     by rewrite -cats1 has_cat /= X orbC. *)
 
-(* This is specific to our logs and should be extracted and proved separately *)
-suff Z : hasPrePos pos neg l.
+(* (* This is specific to our logs and should be extracted and proved separately *) *)
+(* suff Z : hasPrePos pos neg l. *)
 
-case: Hi=>[H|en ep l1 l2 l3 E N P H1 H2 Hi].
-- case: Z=>l1[ep][l2][Z]P H'. 
-  apply: (@NegSplit _ pos neg (rcons l e) e ep l1 [::] l2 _ X P)=>//.
-  - by subst l; rewrite rcons_cat rcons_cons cats1.
-  constructor 1; subst l; rewrite -cats1.
-  rewrite !has_cat !negb_or/= -!(andbC true)/= in H *.
-  by case/ andP: H=>->/andP[->].
+(* case: Hi=>[H|en ep l1 l2 l3 E N P H1 H2 Hi]. *)
+(* - case: Z=>l1[ep][l2][Z]P H'.  *)
+(*   apply: (@NegSplit _ pos neg (rcons l e) e ep l1 [::] l2 _ X P)=>//. *)
+(*   - by subst l; rewrite rcons_cat rcons_cons cats1. *)
+(*   constructor 1; subst l; rewrite -cats1. *)
+(*   rewrite !has_cat !negb_or/= -!(andbC true)/= in H *. *)
+(*   by case/ andP: H=>->/andP[->]. *)
 
-case: Z=>l4[epp][l5][Z]P' H'. 
+(* case: Z=>l4[epp][l5][Z]P' H'.  *)
 
-Check (@NegSplit _ pos neg (rcons l e) e epp).
+(* Check (@NegSplit _ pos neg (rcons l e) e epp). *)
 
-(* OKay, now there is the plan: 
+(* (* OKay, now there is the plan:  *)
 
-- Prove the hasPrePos property for the valid logs, ending with the negative node.
-- Parametrize this lemma with this property appropriately.
+(* - Prove the hasPrePos property for the valid logs, ending with the negative node. *)
+(* - Parametrize this lemma with this property appropriately. *)
 
-*)
+(* *) *)
 
-(* move: (@NegSplit _ pos neg (rcons (l1 ++ ep :: l3) en) en ep l1 [::] l3). *)
-(* rewrite {1}rcons_cat rcons_cons -cats1=>/(_ (erefl _) N P is_true_true H2 Hi)=>H. *)
-(* rewrite -!(cat_cons) catA -cat_rcons in E. *)
+(* (* move: (@NegSplit _ pos neg (rcons (l1 ++ ep :: l3) en) en ep l1 [::] l3). *) *)
+(* (* rewrite {1}rcons_cat rcons_cons -cats1=>/(_ (erefl _) N P is_true_true H2 Hi)=>H. *) *)
+(* (* rewrite -!(cat_cons) catA -cat_rcons in E. *) *)
 
 
-Admitted.
+(* Admitted. *)
   
 End Positive.
 

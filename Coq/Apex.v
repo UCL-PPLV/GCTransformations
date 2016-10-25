@@ -28,7 +28,7 @@ Variables  (p : log).
 
 (* Final heap and graph for the log p with the corresponding certificate epf *)
 Variables (h : heap) (g: graph h).
-Variable (epf : executeLog g0 p = Some (ExRes g)).
+Hypothesis (epf : executeLog g0 p = Some (ExRes g)).
 
 (******************************************************************)
 (*    Apex procedure for exposing reachable objects in the graph  *)
