@@ -244,6 +244,12 @@ case: (condKE (allocG n (new:=nw))
 by exists h0, g0. 
 Qed.
 
+Lemma replayLogRcons2 h0 (g0: graph h0) l e h (g : graph h) h1 (g1: graph h1):
+  executeLog g0 l = Some {| hp := h1; gp := g1 |} ->
+  executeLog g1 [:: e] = Some {| hp := h; gp := g |} ->
+  executeLog g0 (rcons l e) = Some {| hp := h; gp := g |}.
+Proof.
+Admitted.
 
 Lemma replayLogCat h0 (g0: graph h0) l1 l2 h g:
   executeLog g0 (l1 ++ l2) = Some (@ExRes h g) ->
@@ -253,6 +259,21 @@ elim/last_ind: l2 h g=>[h g|l2 e Hi h g H].
 - by rewrite cats0; exists (ExRes g).
 rewrite -rcons_cat in H.
 by case/replayLogRcons: H=>h1[g1][]/Hi.
+Qed.
+
+Lemma replayLogCat2 h0 (g0: graph h0) l1 l2 h g:
+  executeLog g0 (l1 ++ l2) = Some {| hp := h; gp := g |} ->
+  exists h1 g1,
+    executeLog g0 l1 = Some{| hp := h1; gp := g1 |} /\
+    executeLog g1 l2 = Some{| hp := h; gp := g |}.
+Proof.
+    move => ex; move: (replayLogCat ex)=>[[h' g']] ex_pref; exists h', g'.
+    split =>//; rewrite -ex; move: ex; elim/last_ind: l2 h g.
+    rewrite cats0 => h g ex_init; rewrite {1}/executeLog sym =>//.
+    move => s x hyp h g; rewrite -rcons_cat.
+    move => ex; case: (replayLogRcons ex) => h1. case => g1;
+    case => ex' ex_rcon; move: (hyp h1 g1 ex') => f.
+    rewrite -f in ex'; rewrite (replayLogRcons2 ex' ex_rcon) ex =>//.
 Qed.
 
 (* The size of fields in an existing object doesn't change *)
@@ -274,12 +295,20 @@ case: e=>k s f o' nw; case: k=>//=[||n]/=E; move:(condK_true E)=> C.
 - case: (condKE (modifyG (new:=nw)) 
         (fun pf => Some {| hp := _; gp := pf |}) C)=>[pg E2].
   rewrite E2 in E; case: E=>E{E2 pg}; subst h.
-  by rewrite (modify_size g o C) -(modifyDom g1 s f nw).
+  case /and3P: C; move=> s_nw_dom f_in_sz;  move /andP;  case.
+  move => o_val_valid; move: (conj f_in_sz o_val_valid).
+  move /andP => second_part; move: (conj s_nw_dom second_part).
+  move /andP => C'.
+  by rewrite (modify_size g o C') -(modifyDom g1 s f nw).
 case: (condKE (allocG n (new:=nw)) 
       (fun g'=> Some {| hp := _; gp := g' |}) C)=>g' E2. 
 rewrite E2 in E; case: E=>Z; subst h.      
 rewrite eqxx /= -(andbC true)/= in C.
-rewrite (alloc_size g C D); split=>//.
+  case /and3P: C; move=> s_nw_dom f_in_sz;  move /andP;  case.
+  move => o_val_valid; move: (conj f_in_sz o_val_valid).
+  move /andP => second_part; move: (conj s_nw_dom second_part).
+  move /andP => C'.
+rewrite (alloc_size g C' D); split=>//.
 by move/(allocDom g1 nw n s f): D.
 Qed.
 
@@ -355,13 +384,21 @@ move=>E; move:(condK_true E)=>C.
 - case: (condKE (modifyG (new:=n))
         (fun g' : _ => Some {|hp := modify g1 s' f' n; gp := g'|}) C)=>g' E2.
   rewrite E2 in E; case: E=>Z; subst h. 
-  by move: (modify_field g s f C); move/negbTE: H2=>->.
+  case /and3P: C; move=> s_nw_dom f_in_sz;  move /andP;  case.
+  move => o_val_valid; move: (conj f_in_sz o_val_valid).
+  move /andP => second_part; move: (conj s_nw_dom second_part).
+  move /andP => C'.
+  by move: (modify_field g s f C'); move/negbTE: H2=>->.
 (* Allocate *)
 case: (condKE (allocG fnum (new:=n)) (fun g' : _ =>
        Some {| hp := alloc g1 n fnum s' f'; gp := g' |}) C)=>g' E2.
 rewrite E2 in E; case: E=>Z; subst h. 
 rewrite eqxx [_ && true]andbC /= in C.
-by move: (alloc_field g s f C); move/negbTE: H2=>->.
+  case /and3P: C; move=> s_nw_dom f_in_sz;  move /andP;  case.
+  move => o_val_valid; move: (conj f_in_sz o_val_valid).
+  move /andP => second_part; move: (conj s_nw_dom second_part).
+  move /andP => C'.
+by move: (alloc_field g s f C'); move/negbTE: H2=>->.
 Qed.
 
 Lemma replayLogRconsMA h0 (g0 : graph h0) l e s f h g :
@@ -378,17 +415,24 @@ case/andP: H2=>/eqP Z1/eqP Z2; subst s' f'.
 - case: (condKE (modifyG (new:=n))
         (fun g' : _ => Some {|hp := modify g1 s f n; gp := g'|}) C)=>g' E2.
   rewrite E2 in E; case: E=>Z; subst h. 
-  move: (@modify_field _ _ s f n o g s f C).
-  by rewrite !eqxx/= leqNgt =>->; case/andP: C=>_/andP[->]/=.
+  case /and3P: C; move=> s_nw_dom f_in_sz;  move /andP;  case.
+  move => o_val_valid; move: (conj f_in_sz o_val_valid).
+  move /andP => second_part; move: (conj s_nw_dom second_part).
+  move /andP => C'.
+  move: (@modify_field _ _ s f n o g s f C').
+  by rewrite !eqxx/= leqNgt =>->; case/andP: C'=>_/andP[->]/=.
 case: (condKE (allocG fnum (new:=n))
         (fun g' : _ =>
          Some {| hp := alloc g1 n fnum s f; gp := g' |}) C)=>g' E2.
 rewrite E2 in E; case: E=>Z; subst h. 
 rewrite eqxx -(andbC true) /= in C.
-move: (alloc_field g s f C); rewrite !eqxx/= leqNgt =>->.
-by case/andP: C=>_/andP[->].
+  case /and3P: C; move=> s_nw_dom f_in_sz;  move /andP;  case.
+  move => o_val_valid; move: (conj f_in_sz o_val_valid).
+  move /andP => second_part; move: (conj s_nw_dom second_part).
+  move /andP => C'.
+move: (alloc_field g s f C'); rewrite !eqxx/= leqNgt =>->.
+by case/andP: C'=>_/andP[->].
 Qed.
-
 
 (*******************************************************************************)
 (*            Lemmas about different entries and their configurations          *)
@@ -418,7 +462,7 @@ Lemma trace_pure l h' (g' : graph h') et l1 l2:
   l = l1 ++ et :: l2 -> 
   source et # fld et @ g' = new et.
 Proof.
-move=>Kt; elim/last_ind:l2 l l1 h' g'=>
+move=>Kt; elim/last_ind:l2 l l1 h' g' =>
   [l l1 h' g' pf _|l2 e Hi l l1 h' g' H1 H2].
 - by rewrite cats1=>Z; subst l; case: (replayLogRconsT pf Kt).
 rewrite has_rcons negb_or in H2; case/andP: H2=>H2 H3.
@@ -491,6 +535,55 @@ case/andP=>M1/andP[M2]/andP[M3]M4; apply/hasP; exists e.
 by rewrite M2 -!(andbC true).
 Qed.
 
+Require Import Coq.Logic.Classical_Prop.
+
+Lemma existsMAInSufix l h' (g' : graph h') o f:
+    executeLog g0 l = Some {| hp := h'; gp := g'|} ->
+    ~~ (o#f@g0 == o#f@g') ->
+    exists ema l1 l2, [&& matchingMA o f ema, new ema == o#f@g',
+        l == l1 ++ ema::l2 & ~~ has (matchingMA o f) l2].
+Proof.
+    move => execute field_changed.
+    suff D: has (matchingMA o f) l.
+    remember (Nil entry_eqType) as emp.
+    have eq: l = emp ++ l.
+    by rewrite Heqemp cat0s.
+    move: (pickLastMAInSuffix' eq execute D).
+    case=> ema'; case=> l1'; case=> l2'  hasMA.
+    exists ema'; exists l1'; exists l2'.
+    move: hasMA; move /and4P; case.
+    move =>t1 t2 t3 t4.
+    apply/andP. apply conj. exact t1. apply /andP.
+    apply conj; move: t2; move /eqP /sym /eqP. done.
+    move => t2. apply /andP. by apply conj.
+    apply contraT => notHasMa.
+    suff D: o # f @ g0 == o # f @ g'.
+    move: D; move: field_changed; move /negbTE => D; rewrite D=>//.
+    move: execute notHasMa; move:field_changed => _.
+    elim/last_ind: l o f h' g' g0 => [o f h' g' g1 | l x ].
+    rewrite /executeLog; case; move => h_eq matchMA.
+    move: (eqG g1 g' o) => eq_fld; move: (eq_fld h_eq).
+    move => flds; rewrite -flds =>//.
+    move  => C o f h' g' g1 exec no_ma.
+    move: (eqG g1 g0 o).
+    suff P: h0 = h0.  Focus 2. done.
+    move => fld.
+    move: (fld P) => flds_eq; rewrite flds_eq; move: P fld => _ _.
+    rewrite has_rcons in no_ma; move: no_ma; move /orP /not_or_and.
+    case; move /negP => not_x;  move /negP => not_l.
+    move: (replayLogRconsMA_neg exec not_x).
+    case. move => h2; case; move => g2; case;
+    move => exec_l;  move: (C o f h2 g2 g1 exec_l not_l).
+    rewrite flds_eq; move => t1 t2;  move: t1;  rewrite t2 =>//.
+Qed.
+
+Lemma oldSignificance ema l er:
+    kindMA (kind ema) ->
+    executeLog g0 (rcons l ema) = Some er ->
+    exists h1 (g1: graph h1), ((source ema) # (fld ema) @ g1 = old ema /\
+    executeLog g0 l = Some {| hp := h1; gp := g1 |}).
+Proof.
+Admitted.
 (* The following lemma states that for any T-entry, its captured
    o.f-value is either in the graph, or there exists an MA-antry
    *behind* it in the log, which overrides the value of o.f. *)
@@ -545,7 +638,7 @@ clear H h' g' l2; case: et Kt H1=>k s f o nw; case: k=>//= _.
 case/replayLogRcons=>/=h[g][H1] E; move:(condK_true E)=> C.
 case: (condKE (traceG (new:=nw)) 
       (fun _ : _ => Some {| hp := h; gp := g |}) C)=>? E2.
-rewrite E2 in E; case: E=>Z {E2}; subst h1; rewrite (proof_irrelevance g1 g).
+rewrite E2 in E; case: E=>Z {E2}; subst h1. rewrite (Heaps.prelude.proof_irrelevance g1 g).
 by case/andP: C=>/andP[]->_/andP[->].
 Qed.
 
