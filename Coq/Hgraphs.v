@@ -347,8 +347,7 @@ move:(pre_allocG g y fnum) (pre_alloc_fields g fnum X).
 rewrite /pre_alloc pf2/==>g' E.
 suff F: fld < size (fields g' x).
 suff P: nth null (fields g' x) fld == old.
-- rewrite F P.
- case:(g')=>V' _.
+- rewrite F P /=; case:(g')=>V' _.
   rewrite inE /= !hdomPtUn !V' !inE !eqxx !(andbC _ true)/=.
   apply/andP; split; first by rewrite pf3 orbC.
   move: pf5. rewrite !inE /= =>/andP[_] /==>/andP[].
@@ -403,6 +402,7 @@ move: g K; rewrite /modify H1; case: ifP=>H3 g K.
 - move: (proof_irrelevance _ g g1)=>Z; subst g1.
   case: ifP=>///andP[/eqP E1/eqP E2]; subst s' f'.
   by rewrite (nth_default _ H3) H3.
+
 move: g; set h := s' :-> set_nth null (fields g1 s') f' n \+ free s' h1=>g.
 have E1: h = s' :-> set_nth null (fields g1 s') f' n \+ free s' h1 by [].
 move:(@edgeE h g (free s' h1) _ _ E1)=> E2; case: ifP.
@@ -567,6 +567,7 @@ have X4:  (s \in dom (pre_alloc h1 n fnum)) &&
           ((f < size (fields (pre_allocG g1 n fnum) s)) &&
            (o  \in [predU pred1 null & dom (pre_alloc h1 n fnum)])).
           by rewrite X1 X2 X3 X3'.
+
 move: (modify_size g o' X4)=>->D; apply/sym.
 suff N: o' != n by rewrite (pre_alloc_fields g1 fnum N).
 case B: (o' == n)=>//; move/eqP: B=>Z; subst o'.

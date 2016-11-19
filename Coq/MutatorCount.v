@@ -462,7 +462,7 @@ Proof.
     move => g_eq; rewrite -g_eq => init_fld _.
     clear ex_et D g_eq g1 h1; rewrite -cat_rcons in l_eq.
     rewrite l_eq in seqs; rewrite -seqs in ex.
-    move: (replayLogCat ex); case => er; move: is_neg.
+    case: (replayLogCat ex) => [[hx gx]]; move: is_neg.
     move /andP; case => ema_ma is_neg exec_til_ema.
     move: (oldSignificance ema_ma exec_til_ema).
     case => h1; case => g1; case; move => src exec_l_prefix.

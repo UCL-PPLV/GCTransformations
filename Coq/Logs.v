@@ -462,7 +462,7 @@ Lemma trace_pure l h' (g' : graph h') et l1 l2:
   l = l1 ++ et :: l2 -> 
   source et # fld et @ g' = new et.
 Proof.
-move=>Kt; elim/last_ind:l2 l l1 h' g' =>
+move=>Kt; elim/last_ind:l2 l l1 h' g'=>
   [l l1 h' g' pf _|l2 e Hi l l1 h' g' H1 H2].
 - by rewrite cats1=>Z; subst l; case: (replayLogRconsT pf Kt).
 rewrite has_rcons negb_or in H2; case/andP: H2=>H2 H3.
@@ -577,13 +577,25 @@ Proof.
     rewrite flds_eq; move => t1 t2;  move: t1;  rewrite t2 =>//.
 Qed.
 
-Lemma oldSignificance ema l er:
+Lemma oldSignificance ema l h (g : graph h) :
     kindMA (kind ema) ->
-    executeLog g0 (rcons l ema) = Some er ->
+    executeLog g0 (rcons l ema) = Some {| hp := h; gp := g |} ->
     exists h1 (g1: graph h1), ((source ema) # (fld ema) @ g1 = old ema /\
     executeLog g0 l = Some {| hp := h1; gp := g1 |}).
 Proof.
-Admitted.
+    move => kind_ema ex.
+    move: (replayLogRcons ex); case => h1; case => g1.
+    case => ex_prefix ex_rcon; exists h1, g1; split =>//.
+    move: ex_rcon.
+    rewrite /executeLog.
+    move: kind_ema.
+    case ema => k s f o n.
+    rewrite /matchingMA/=.
+    case: k=>//=[H2|fnum H2].
+    move=>E; move:(condK_true E); move /and4P; case => _ _ _ /eqP =>//.
+    move=>E; move:(condK_true E); move /and4P; case => _ _ _ /eqP =>//.
+Qed.
+
 (* The following lemma states that for any T-entry, its captured
    o.f-value is either in the graph, or there exists an MA-antry
    *behind* it in the log, which overrides the value of o.f. *)
@@ -638,7 +650,7 @@ clear H h' g' l2; case: et Kt H1=>k s f o nw; case: k=>//= _.
 case/replayLogRcons=>/=h[g][H1] E; move:(condK_true E)=> C.
 case: (condKE (traceG (new:=nw)) 
       (fun _ : _ => Some {| hp := h; gp := g |}) C)=>? E2.
-rewrite E2 in E; case: E=>Z {E2}; subst h1. rewrite (Heaps.prelude.proof_irrelevance g1 g).
+rewrite E2 in E; case: E=>Z {E2}; subst h1; rewrite (Heaps.prelude.proof_irrelevance g1 g).
 by case/andP: C=>/andP[]->_/andP[->].
 Qed.
 
