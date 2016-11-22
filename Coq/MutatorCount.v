@@ -141,6 +141,56 @@ move=>H P en l1 l2 N E; apply: (H en l1 (rcons l2 e) N); subst l.
 by rewrite rcons_cat; congr (_++_).
 Qed.
 
+Lemma cancel_back {A : eqType} (f : A -> bool) l1 l2 e1 e2 k1 k2 :
+  rcons l1 e1 ++ k1 = rcons l2 e2 ++ k2 ->
+  ~~ has f k1 -> ~~ has f k2 -> f e1 -> f e2 ->
+  [/\ l1 = l1, k1 = k2 & e1 = e2].
+Proof.
+elim/last_ind: k1; case: k2=>//; rewrite ?cats0.
+- by move=>/rcons_inj[]->->.
+Admitted.
+  
+Lemma cat_inj {A : eqType} (l1 l2 l3 : seq A) :
+  l1 ++ l3 = l2 ++ l3 -> l1 = l2.
+Proof.
+elim/last_ind: l3; first by rewrite !cats0.
+by move=>l3 x Hi; rewrite -!rcons_cat=>/rcons_inj[]/Hi.
+Qed.
+
+Lemma psl_prefix {A : eqType} (pos neg : A -> bool) l :
+  PositiveSeqLarge pos neg  l->
+  forall l3 ep l4, l = rcons l3 ep ++ l4 ->
+  pos ep -> ~~ has neg l4 ->
+  PositiveSeqLarge pos neg (rcons l3 ep).
+Proof.
+elim=>{l}.
+- move=>l H l1 ep l2 Z P N; subst l.
+  constructor 1; rewrite has_cat has_rcons /= !Bool.negb_orb in H.
+  by rewrite has_rcons; case/andP: H=>/andP[]=>/negbTE->/negbTE->.
+move=> l en ep l1 l2 l3 E H1 H2 H3 H4 H5 Hi l4 ep' l5 Z P N.
+rewrite -cat_rcons in E.
+have X: PositiveSeqLarge pos neg (rcons l1 ep).
+apply: (Hi l1 ep [::])=>//; last by rewrite cats0.
+clear X.
+have X: has neg (rcons l4 ep').
+- case B: (has neg (rcons l4 ep'))=>//.
+  suff X: (has neg (rcons l4 ep' ++ l5)) != (has neg (rcons l1 ep ++ l3 ++ en :: l2)).
+  + by rewrite -Z E in X; move/negbTE: X; rewrite eqxx.
+  by rewrite !has_cat B/=; move/negbTE: N=>->; rewrite has_rcons H1 -!(orbC true)/=.
+move: (find_last X)=>[en'][l6][l7][E']Z1 Z2; clear X.
+rewrite Z in E; clear Z l.
+suff X: l6 = rcons l1 ep ++ l3.
+- subst l6. rewrite cat_rcons -catA in E'.
+  by apply: (@NegSplit _ pos neg (rcons l4 ep') _ _ _ _ _ E').
+rewrite E' in E; clear E' l4.
+rewrite -cat_rcons -catA in E. rewrite [_ ++ l3 ++ _]catA in E.
+rewrite -cat_rcons in E.
+have X: ~~ has neg (l7 ++ l5).
+  by rewrite has_cat; move/negbTE: N=>->; move/negbTE: Z2=>->.
+case: (cancel_back E X H3 Z1 H1)=>W1 W2 W3. rewrite W2 in E;subst en'.
+by move/cat_inj/rcons_inj: E=>[].
+Qed.
+
 (*
 * We need to state that every "+" which is a predecessor
 * of a "-" is different.
@@ -162,19 +212,16 @@ case Y: (neg e)=>H; last first.
   - subst l; rewrite -!cats1 -!catA !cat_cons; congr (_++_).
     by rewrite !cats1; congr (_::_); rewrite rcons_cat; congr (_++_).
   - by rewrite has_rcons Bool.negb_orb H3 Y.
-- move: (H e l [::] Y); rewrite -cats1/=. case/(_ erefl)=>ep[l3][l4][E]P N.
-  have D: PositiveSeqNonInd pos neg l. by admit.
-    (* have E': rcons l e = l ++ [:: e] by rewrite cats1. *)
-    (* case: (H e l [::] Y E')=>ep'[l5][l6][{E'}E']H' N'. *)
-    (* suff X: ep = ep' /\  l4 = l6. *)
-    (* move=>en l1 l2 N1. *)
-
-  apply: (@NegSplit _ pos neg (l ++ [::e]) e ep l3 [::] l4 _ Y P _ N)=>//.
-  - by rewrite E -catA. subst l.
-  move: (Hi D).
-  admit.
-  
- Admitted.
+move: (H e l [::] Y); rewrite -cats1/=. case/(_ erefl)=>ep[l3][l4][E]P N.
+suff D: PositiveSeqNonInd pos neg l.
+- apply: (@NegSplit _ pos neg (l ++ [::e]) e ep l3 [::] l4 _ Y P _ N)=>//.
+  - by rewrite E -catA; subst l.
+  by subst l; apply: (@psl_prefix _ _ _ _ (Hi D) l3 ep l4)=>//; rewrite cat_rcons.
+clear Hi; move=>en l1 l2 N' E'.
+have Z: rcons l e = l1 ++ en :: rcons l2 e by rewrite E' rcons_cat/=.
+by move: (H en l1 (rcons l2 e) N' Z).
+Qed.  
+ 
 
 Definition hasPrePos {A : eqType} (pos neg : A -> bool) (l : seq A) :=
   exists l1 ep l2, [/\ l = l1 ++ ep :: l2, pos ep & ~~ has neg l2].
