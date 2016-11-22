@@ -144,8 +144,43 @@ Definition OnlyNegatives {A : eqType } neg pos (l : seq A) (t : PositiveSeqNonIn
  Lemma positiveNonIndLarge  {A : eqType} (pos neg : A -> bool) (l : seq A) :
    PositiveSeqNonInd pos neg l -> PositiveSeqLarge pos neg l.
 Proof.
-    elim/last_ind: l=>[_|l e Hi]; first by constructor 1.
-    case Y: (neg e).
+elim/last_ind: l=>[_|l e Hi]; first by constructor 1.
+case Y: (neg e)=>H; last first.
+- have D: PositiveSeqNonInd pos neg l. by admit.
+  case: (Hi D).
+  + move=>N. constructor 1. admit.
+  move=>en ep l1 l2 l3 E H1 H2 H3 H4 H5.  
+  apply: (@NegSplit _ pos neg (rcons l e) en ep l1 (rcons l2 e) l3)=>//.
+  - admit.
+  - admit.
+- move: (H e l [::] Y); rewrite -cats1/=. case/(_ erefl)=>ep[l3][l4][E]P N.
+  have D: PositiveSeqNonInd pos neg l. by admit.
+
+  apply: (@NegSplit _ pos neg (l ++ [::e]) e ep l3 [::] l4 _ Y P _ N)=>//.
+  - by rewrite E -catA. subst l.
+  move: (Hi D).
+  (* TODO: stopped here. *)  
+    
+- case G: (has neg l); last by admit. (* move/negbT: Y'=>Y' _; apply: NonNeg.  *)
+  move=>H; move: (find_last G)=>[en][l1][l2][E]N[H'].
+  have E' : rcons l e = l1 ++ en :: rcons l2 e by admit.
+  move: (H en l1 (rcons l2 e) N E')=>[ep][l3][l4][E'']P N'; subst l1.
+  rewrite -!catA in E'.
+  apply: (@NegSplit _ pos neg (rcons l e) en ep l3 (rcons l2 e) l4 E' N P _ N').
+  - admit.
+  
+  
+  have P : pos e. admit.
+  
+  (* Check (@NegSplit _ neg pos (rcons l e) e en l1 [::] l2 E' P N). *)
+
+
+
+- Print PositiveSeqLarge.
+  Check NegSplit
+
+
+        
 (* (* e is negative *) *)
     move/(_ e l [::] Y); rewrite cats1=>/(_ (erefl _))[ep][l1][l2][E]P H2.
     apply: (@NegSplit _ pos neg (rcons l e) e ep l1 [::] l2)=>//.
