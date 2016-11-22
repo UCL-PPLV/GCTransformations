@@ -133,6 +133,14 @@ Definition PositiveSeqNonInd {A : eqType} (pos neg : A -> bool) (l : seq A) : Pr
   forall en l1 l2, neg en -> l = l1 ++ en :: l2 ->
   exists ep l3 l4, [/\ l1 = l3 ++ ep :: l4, pos ep & ~~ has neg l4].
 
+Lemma psn_rcons {A : eqType} (pos neg : A -> bool) l e :
+  PositiveSeqNonInd pos neg (rcons l e) -> neg e = false ->
+  PositiveSeqNonInd pos neg l.
+Proof.
+move=>H P en l1 l2 N E; apply: (H en l1 (rcons l2 e) N); subst l.
+by rewrite rcons_cat; congr (_++_).
+Qed.
+
 (*
 * We need to state that every "+" which is a predecessor
 * of a "-" is different.
@@ -146,45 +154,26 @@ Definition OnlyNegatives {A : eqType } neg pos (l : seq A) (t : PositiveSeqNonIn
 Proof.
 elim/last_ind: l=>[_|l e Hi]; first by constructor 1.
 case Y: (neg e)=>H; last first.
-- have D: PositiveSeqNonInd pos neg l. by admit.
+- have D: PositiveSeqNonInd pos neg l by apply: (psn_rcons H Y).
   case: (Hi D).
-  + move=>N. constructor 1. admit.
+  + by move=>N; constructor 1; rewrite has_rcons Bool.negb_orb N Y.
   move=>en ep l1 l2 l3 E H1 H2 H3 H4 H5.  
   apply: (@NegSplit _ pos neg (rcons l e) en ep l1 (rcons l2 e) l3)=>//.
-  - admit.
-  - admit.
+  - subst l; rewrite -!cats1 -!catA !cat_cons; congr (_++_).
+    by rewrite !cats1; congr (_::_); rewrite rcons_cat; congr (_++_).
+  - by rewrite has_rcons Bool.negb_orb H3 Y.
 - move: (H e l [::] Y); rewrite -cats1/=. case/(_ erefl)=>ep[l3][l4][E]P N.
   have D: PositiveSeqNonInd pos neg l. by admit.
+    (* have E': rcons l e = l ++ [:: e] by rewrite cats1. *)
+    (* case: (H e l [::] Y E')=>ep'[l5][l6][{E'}E']H' N'. *)
+    (* suff X: ep = ep' /\  l4 = l6. *)
+    (* move=>en l1 l2 N1. *)
 
   apply: (@NegSplit _ pos neg (l ++ [::e]) e ep l3 [::] l4 _ Y P _ N)=>//.
   - by rewrite E -catA. subst l.
   move: (Hi D).
-  (* TODO: stopped here. *)  
-    
-- case G: (has neg l); last by admit. (* move/negbT: Y'=>Y' _; apply: NonNeg.  *)
-  move=>H; move: (find_last G)=>[en][l1][l2][E]N[H'].
-  have E' : rcons l e = l1 ++ en :: rcons l2 e by admit.
-  move: (H en l1 (rcons l2 e) N E')=>[ep][l3][l4][E'']P N'; subst l1.
-  rewrite -!catA in E'.
-  apply: (@NegSplit _ pos neg (rcons l e) en ep l3 (rcons l2 e) l4 E' N P _ N').
-  - admit.
+  admit.
   
-  
-  have P : pos e. admit.
-  
-  (* Check (@NegSplit _ neg pos (rcons l e) e en l1 [::] l2 E' P N). *)
-
-
-
-- Print PositiveSeqLarge.
-  Check NegSplit
-
-
-        
-(* (* e is negative *) *)
-    move/(_ e l [::] Y); rewrite cats1=>/(_ (erefl _))[ep][l1][l2][E]P H2.
-    apply: (@NegSplit _ pos neg (rcons l e) e ep l1 [::] l2)=>//.
-    - by rewrite E rcons_cat rcons_cons cats1.
  Admitted.
 
 Definition hasPrePos {A : eqType} (pos neg : A -> bool) (l : seq A) :=
