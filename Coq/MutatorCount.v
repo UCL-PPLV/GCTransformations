@@ -141,15 +141,6 @@ move=>H P en l1 l2 N E; apply: (H en l1 (rcons l2 e) N); subst l.
 by rewrite rcons_cat; congr (_++_).
 Qed.
 
-Lemma cancel_back {A : eqType} (f : A -> bool) l1 l2 e1 e2 k1 k2 :
-  rcons l1 e1 ++ k1 = rcons l2 e2 ++ k2 ->
-  ~~ has f k1 -> ~~ has f k2 -> f e1 -> f e2 ->
-  [/\ l1 = l1, k1 = k2 & e1 = e2].
-Proof.
-elim/last_ind: k1; case: k2=>//; rewrite ?cats0.
-- by move=>/rcons_inj[]->->.
-Admitted.
-  
 Lemma cat_inj {A : eqType} (l1 l2 l3 : seq A) :
   l1 ++ l3 = l2 ++ l3 -> l1 = l2.
 Proof.
@@ -157,6 +148,25 @@ elim/last_ind: l3; first by rewrite !cats0.
 by move=>l3 x Hi; rewrite -!rcons_cat=>/rcons_inj[]/Hi.
 Qed.
 
+Lemma cancel_back {A : eqType} (f : A -> bool) l1 l2 e1 e2 k1 k2 :
+  rcons l1 e1 ++ k1 = rcons l2 e2 ++ k2 ->
+  ~~ has f k1 -> ~~ has f k2 -> f e1 -> f e2 ->
+  [/\ l1 = l1, k1 = k2 & e1 = e2].
+Proof.
+elim/last_ind: k1 k2.
+- case/lastP; first by rewrite ?cats0; move=>/rcons_inj[]->->.
+  move=>l x; rewrite ?cats0 -rcons_cat=>/rcons_inj[]->->_ H G.
+  by rewrite has_rcons G in H.
+move=>l x Hi; case/lastP; rewrite ?cats0.
+- rewrite -rcons_cat=>/rcons_inj[]=>Z1 Z2 H1 H2 G1 G2.
+  by subst e2 l2; rewrite has_rcons G2 in H1.
+move=>l' x'; rewrite -!rcons_cat=>/rcons_inj[]=>Z1 Z2 H1 H2 G1 G2; subst x'.
+rewrite !has_rcons !Bool.negb_orb in H1 H2.
+case/andP: H1=>H H1; case/andP: H2=>_ H2.
+case: (Hi _ Z1 H1 H2 G1 G2)=>_ Y2 Y3; subst l' e2.
+by move/cat_inj/rcons_inj: Z1=>[].  
+Qed.
+ 
 Lemma psl_prefix {A : eqType} (pos neg : A -> bool) l :
   PositiveSeqLarge pos neg  l->
   forall l3 ep l4, l = rcons l3 ep ++ l4 ->
