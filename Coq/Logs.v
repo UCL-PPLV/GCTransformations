@@ -249,7 +249,16 @@ Lemma replayLogRcons2 h0 (g0: graph h0) l e h (g : graph h) h1 (g1: graph h1):
   executeLog g1 [:: e] = Some {| hp := h; gp := g |} ->
   executeLog g0 (rcons l e) = Some {| hp := h; gp := g |}.
 Proof.
-Admitted.
+move=>H1 H2.
+elim: l e h0 g0 H1 H2=>//.
+- move=>e h0 g0; case=>Z; subst h1; rewrite [rcons _ _]/=.
+  by rewrite (proof_irrelevance g0 g1).
+move=>x l Hi e h0 g0.
+rewrite rcons_cons.
+move/replayLogCons2=>[h2][g2][E]S H2.
+move: (Hi e h2 g2 S H2)=>H. 
+by apply: (@replayLogCons _ g0 x (rcons l e) _ g2 _ g E H).
+Qed.
 
 Lemma replayLogCat h0 (g0: graph h0) l1 l2 h g:
   executeLog g0 (l1 ++ l2) = Some (@ExRes h g) ->
@@ -719,6 +728,12 @@ case/mapP=>xf H Z; subst x.
 case/tracedObjFieldsP: H=>et[l1][l2][H1]H2 H3; subst xf.
 by exists et, l1, l2.
 Qed.
+
+
+Search _ (executeLog _ _ ) (_ ++ _).
+
+
+
 
 End ExecuteLogs.
 
