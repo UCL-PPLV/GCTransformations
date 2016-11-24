@@ -730,10 +730,5 @@ by exists et, l1, l2.
 Qed.
 
 
-Search _ (executeLog _ _ ) (_ ++ _).
-
-
-
-
 End ExecuteLogs.
 
