@@ -11,6 +11,7 @@ The structure of the project:
   expose functions. Different dimensions are implemented as type
   classes with mutually-disjoint functions, specifying the
   corresponding partitions.
+
    
 ---- GCDerivation.hs -- this file contains implementation of the main
      GC machinery concerning parametrized instances of the explore
