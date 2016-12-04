@@ -85,6 +85,9 @@ End HeapGraphs.
 
 Notation fields g x := (@contents _ g x).1.
 
+(* Whether an object is D-protected *)
+Notation dprot g x := (@contents _ g x).2.
+
 Lemma graphPt z h (g: graph h) : 
   z \in dom h -> exists (d : bool),
       h = z :-> (fields g z, d) \+ free z h.
@@ -97,7 +100,6 @@ Qed.
 Lemma graphNoPt z h (g: graph h) : 
   z \notin dom h -> (fields g z) = [::].
 Proof. by move=>D; case: edgeP=>//; move/negbTE: D=>->. Qed.
-
 
 (* restating the graph properties in terms of booleans *)
 
@@ -121,7 +123,6 @@ Require Import Coq.Logic.ProofIrrelevance.
 Lemma eqG h1 (g1 : graph h1) h2 (g2 : graph h2) x : 
         h1 = h2 -> contents g1 x = contents g2 x.
 Proof. by move=>E; rewrite -E in g2 *; rewrite (proof_irrelevance _ g1 g2). Qed.
-
 
 
 (******************************************************************)
