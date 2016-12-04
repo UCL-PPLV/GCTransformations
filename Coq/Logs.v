@@ -729,6 +729,6 @@ case/tracedObjFieldsP: H=>et[l1][l2][H1]H2 H3; subst xf.
 by exists et, l1, l2.
 Qed.
 
-
 End ExecuteLogs.
 
+Definition prefix {A : eqType} (l1 l : seq A) := exists n, l1 = take n l.

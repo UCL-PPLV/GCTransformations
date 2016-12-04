@@ -13,8 +13,6 @@ Unset Printing Implicit Defensive.
 (* Implementation of the Apex 'expose' function and the proof of its soundness. *)
 (********************************************************************************)
 
-Definition prefix {A : eqType} (l1 l : seq A) := exists n, l1 = take n l.
-
 Section ApexAlgo.
 
 (* Default log entry *)

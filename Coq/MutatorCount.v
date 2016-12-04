@@ -730,4 +730,13 @@ T-entry itself. Interesting.
 
  *)
 
+
+(* TODO: relaxing mutator counts *)
+
+
+Variables (wf_lt wf_gt : log -> seq (ptr * nat)).
+
+Hypothesis Hwfg : forall l p, prefix p l -> {subset wavefront p <= wf_gt p}. 
+Hypothesis Hwfl : forall l p, prefix p l -> {subset wf_lt p <= wavefront l}. 
+
 End MutatorCount.

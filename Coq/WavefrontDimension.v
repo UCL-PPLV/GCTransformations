@@ -85,5 +85,15 @@ Definition W_lt l :=
                             (all_obj_fields_wf l)]
    in  wfl ++ wol.
 
+
+Lemma w_lt_approx l : 
+  prefix l p -> {subset W_lt l <= wavefront l}.
+Proof.
+case=>n pf/=.
+move=>o; rewrite /W_lt mem_cat/=; rewrite !mem_map// !mem_filter/=.
+case X: (FL o.1)=>//=; last by case/andP=>_->.
+by case/orP=>//; case/andP=>_->.
+Qed.
+
 End WavefrontDimension.
 
