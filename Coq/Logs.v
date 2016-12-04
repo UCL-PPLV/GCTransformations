@@ -682,7 +682,7 @@ Definition tracedEntries : seq LogEntry :=
 Definition tracedObjFields := 
   [seq (source et, fld et) | et <- tracedEntries].
 
-Definition markedObjects :=
+Definition alreadyMarked :=
   [seq new et | et <- tracedEntries].
 
 (* Next, we define the set of actual objects in the final heap-graph
@@ -709,7 +709,7 @@ case/mapP=>et/tracedEntriesP[H1][l1][l2]H2 H3; subst sf.
 by exists et, l1, l2.
 Qed.
 
-Lemma markedObjectsP x : x \in markedObjects <->   
+Lemma alreadyMarkedP x : x \in alreadyMarked <->   
   exists et l1 l2, 
   [/\ p = l1 ++ et :: l2, kind et == T & x = new et].
 Proof.

@@ -73,12 +73,12 @@ Lemma expose_r_fires et l1 l2 :
   IS x -> SR o -> 
   p = l1 ++ et :: l2  ->
   kind et == T        ->
-  x \in markedObjects p ++ expose_r.
+  x \in alreadyMarked p ++ expose_r.
 Proof.
 move=>/=H1 H2 E K.
 rewrite mem_cat; apply/orP.
 case: (traced_objects epf E K); [left | right].
-- by apply/markedObjectsP; exists et, l1, l2.
+- by apply/alreadyMarkedP; exists et, l1, l2.
 case/hasP: b=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4; rewrite E2 E3.
 case: (prefix_wavefront e0 D E K)=>pre[G1]/(w_gt_approx epf wp) G2.
 apply/mapP; exists (pre, ema)=>//=.
@@ -94,16 +94,16 @@ Lemma expose_c_fires et l1 l2 :
   IS x -> LR o ->
   p = l1 ++ et :: l2  ->
   kind et == T        ->
-  x \in markedObjects p ++ expose_c.
+  x \in alreadyMarked p ++ expose_c.
 Proof.
 move=>/=H1 H2 E K.
 rewrite mem_cat; apply/orP.
 case: (traced_objects' epf E K)=>B.
-- by left; apply/markedObjectsP; exists et, l1, l2.
+- by left; apply/alreadyMarkedP; exists et, l1, l2.
 case: B=> ema[l3][l4]/andP[M]/andP[/eqP E2]/andP[/eqP E3]N.
 case X: (has (matchingTFull ema) p).
 - case/hasP: X=>e /in_split[l5][l6]E'/andP[K'/andP[E3']]/andP[E2']E4'.
-  by left; apply/markedObjectsP; exists e, l5, l6; move/eqP: E4'=>->.  
+  by left; apply/alreadyMarkedP; exists e, l5, l6; move/eqP: E4'=>->.  
 move/negbT: X=>X; subst l2.
 right; rewrite /expose_c.
 case/mapP: (mut_count_fires e0 epf E K M E2 X N)=>e H3[Z1 Z2 Z3].
@@ -119,7 +119,7 @@ Lemma expose_rc_fires et l1 l2 :
   let f := fld    et in
   let x := o # f @ g in
   IS x -> p = l1 ++ et :: l2  -> kind et == T ->
-  x \in markedObjects p ++ expose_r ++ expose_c.
+  x \in alreadyMarked p ++ expose_r ++ expose_c.
 Proof.
 move=>o f x H1 E K.
 case H2: (SR o).

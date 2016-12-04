@@ -67,7 +67,7 @@ Variable e0 : LogEntry.
 
 Corollary w_gt_expose_apex_sound : 
   {subset needToBeMarked p g
-            <= markedObjects p ++ expose_apex e0 p g W_gt}.
+            <= alreadyMarked p ++ expose_apex e0 p g W_gt}.
 Proof. by apply: (expose_apex_sound e0 epf w_gt_approx). Qed.
 
 (* W_gt is an underapproximation the set of object fields' values
