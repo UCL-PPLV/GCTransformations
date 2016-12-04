@@ -682,13 +682,13 @@ Definition tracedEntries : seq LogEntry :=
 Definition tracedObjFields := 
   [seq (source et, fld et) | et <- tracedEntries].
 
-Definition tracedTargets :=
+Definition markedObjects :=
   [seq new et | et <- tracedEntries].
 
 (* Next, we define the set of actual objects in the final heap-graph
    with respect to traced objects. *)
 
-Definition actualTargets : seq ptr := 
+Definition needToBeMarked : seq ptr := 
   [seq (pf.1)#(pf.2)@g | pf <- tracedObjFields].
 
 Lemma tracedEntriesP e: e \in tracedEntries <->
@@ -709,7 +709,7 @@ case/mapP=>et/tracedEntriesP[H1][l1][l2]H2 H3; subst sf.
 by exists et, l1, l2.
 Qed.
 
-Lemma tracedTargetsP x : x \in tracedTargets <->   
+Lemma markedObjectsP x : x \in markedObjects <->   
   exists et l1 l2, 
   [/\ p = l1 ++ et :: l2, kind et == T & x = new et].
 Proof.
@@ -720,7 +720,7 @@ apply/mapP; exists et=>//.
 by apply/tracedEntriesP; split=>//; exists l1, l2.
 Qed.
 
-Lemma actualTargetsP x : x \in actualTargets ->   
+Lemma needToBeMarkedP x : x \in needToBeMarked ->   
   exists et l1 l2, 
   [/\ p = l1 ++ et :: l2, kind et == T & x = (source et)#(fld et)@g].
 Proof.

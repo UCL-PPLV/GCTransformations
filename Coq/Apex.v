@@ -79,18 +79,18 @@ Qed.
 (******************************************************************)
 
 (* The following theorem states the soundness of the expose_apex
-   procedure: it adds to the tracedTargets (retrieved from the
+   procedure: it adds to the markedObjects (retrieved from the
    T-entries) a set of objects, delivered by 'expose_apex', such that
    the union of the two contains the *actual targets* of all traced
    object-fields by the end of the log execution. *)
 
 Theorem expose_apex_sound : 
-  {subset actualTargets p g <= tracedTargets p ++ expose_apex}.
+  {subset needToBeMarked p g <= markedObjects p ++ expose_apex}.
 Proof.
-move=>x/actualTargetsP=>[[et]][l1][l2][E]K Z; subst x.
+move=>x/needToBeMarkedP=>[[et]][l1][l2][E]K Z; subst x.
 rewrite mem_cat; apply/orP.
 case: (traced_objects epf E K); [left | right].
-- by apply/tracedTargetsP; exists et, l1, l2. 
+- by apply/markedObjectsP; exists et, l1, l2. 
 case/hasP: b=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4.
 rewrite E2 E3 in E4 *;  rewrite E4.
 by apply: (expose_apex_fires E D).
@@ -110,8 +110,8 @@ Variable (epf : executeLog g0 p = Some (ExRes g)).
 (* Indeed, this is trivially sound  *)
 
 Corollary vanilla_expose_apex_sound : 
-  {subset actualTargets p g
-            <= tracedTargets p ++ expose_apex e0 p g wavefront}.
+  {subset needToBeMarked p g
+            <= markedObjects p ++ expose_apex e0 p g wavefront}.
 Proof. by apply: (expose_apex_sound e0 epf)=>l _. Qed.
 
 End ApexVanilla.
