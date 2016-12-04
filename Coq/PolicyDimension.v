@@ -55,34 +55,35 @@ Definition expose_r : seq ptr :=
                let f             := (fld pi)    in   
                let n             := (new pi)    in   
                [&& (kindMA k), ((o, f) \in w_gt pre),
-                   SR o, IS n & IS (o#f@g)]].
+                   SR o & IS n]].
 
 Definition expose_c : seq ptr := 
   [seq new pi | pi <- p &
                 let n := new pi    in
                 let o := source pi in
                 let f := fld pi    in
-                [&& LR o, (M_plus e0 p o f n > M_minus e0 p o f n) & IS n]].
+                [&& (M_plus e0 p o f n > M_minus e0 p o f n), LR o & IS n]].
 
-(* A lemma, similar to the one, proved for expose_apex *)
+(* Lemmas: similar to the one, proved for expose_apex *)
 
 Lemma expose_r_fires et l1 l2 : 
   let o := source et in
   let f := fld    et in
   let x := o # f @ g in
+  IS x -> SR o -> 
   p = l1 ++ et :: l2  ->
   kind et == T        ->
-  (forall q, IS q) -> SR o -> 
   x \in tracedTargets p ++ expose_r.
 Proof.
-move=>/=E K H1 H2.
+move=>/=H1 H2 E K.
 rewrite mem_cat; apply/orP.
 case: (traced_objects epf E K); [left | right].
 - by apply/tracedTargetsP; exists et, l1, l2.
 case/hasP: b=>ema D/andP[K2]/andP[/eqP E2]/andP[/eqP E3]/eqP E4; rewrite E2 E3.
 case: (prefix_wavefront e0 D E K)=>pre[G1]/(w_gt_approx epf wp) G2.
 apply/mapP; exists (pre, ema)=>//=.
-rewrite mem_filter K2 -E2 -E3 H2 !H1 G1 -!(andbC true)/=.
+rewrite mem_filter K2 -E2 -E3 H2 G1 -!(andbC true)/=.
+apply/andP; split; last by rewrite -E4 H1.
 by apply: G2; case/prefV: G1=>[i][Y1] Y2 Y3; exists i.
 Qed.
 
@@ -90,12 +91,12 @@ Lemma expose_c_fires et l1 l2 :
   let o := source et in
   let f := fld    et in
   let x := o # f @ g in
+  IS x -> LR o ->
   p = l1 ++ et :: l2  ->
   kind et == T        ->
-  (forall q, IS q) -> LR o -> 
   x \in tracedTargets p ++ expose_c.
 Proof.
-move=>/=E K H1 H2.
+move=>/=H1 H2 E K.
 rewrite mem_cat; apply/orP.
 case: (traced_objects' epf E K)=>B.
 - by left; apply/tracedTargetsP; exists et, l1, l2.
@@ -108,8 +109,26 @@ right; rewrite /expose_c.
 case/mapP: (mut_count_fires e0 epf E K M E2 X N)=>e H3[Z1 Z2 Z3].
 case/andP: M=>_/andP[/eqP Y1]/eqP Y2.
 apply/mapP; exists e=>//; last by rewrite -Z3. 
-rewrite !mem_filter -!Z1 -!Z2 H1 in H3 *.
-by rewrite Y1 in H2; rewrite H2 -!(andbC true). 
+rewrite !mem_filter -!Z1 -!Z2 in H3 *.
+rewrite Y1 in H2; rewrite H2/=.
+by case/andP: H3=>->->/=; rewrite andbC -Z3 -E2. 
 Qed.
 
+Lemma expose_rc_fires et l1 l2 :
+  let o := source et in
+  let f := fld    et in
+  let x := o # f @ g in
+  IS x -> p = l1 ++ et :: l2  -> kind et == T ->
+  x \in tracedTargets p ++ expose_r ++ expose_c.
+Proof.
+move=>o f x H1 E K.
+case H2: (SR o).
+- move: (expose_r_fires H1 H2 E K); rewrite -/x=>G.
+  by rewrite catA mem_cat G.
+move: (pr_coh polp o); rewrite H2/==>{H2}H2.
+move: (expose_c_fires H1 H2 E K); rewrite -/x=>G.
+rewrite !mem_cat in G *.
+by case/orP: G=>->//; rewrite -!(orbC true).
+Qed.
+  
 End PolicyDimension.
