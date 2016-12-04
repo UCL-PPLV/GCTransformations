@@ -688,7 +688,7 @@ Definition alreadyMarked :=
 (* Next, we define the set of actual objects in the final heap-graph
    with respect to traced objects. *)
 
-Definition needToBeMarked : seq ptr := 
+Definition shouldBeMarked : seq ptr := 
   [seq (pf.1)#(pf.2)@g | pf <- tracedObjFields].
 
 Lemma tracedEntriesP e: e \in tracedEntries <->
@@ -720,7 +720,7 @@ apply/mapP; exists et=>//.
 by apply/tracedEntriesP; split=>//; exists l1, l2.
 Qed.
 
-Lemma needToBeMarkedP x : x \in needToBeMarked ->   
+Lemma shouldBeMarkedP x : x \in shouldBeMarked ->   
   exists et l1 l2, 
   [/\ p = l1 ++ et :: l2, kind et == T & x = (source et)#(fld et)@g].
 Proof.

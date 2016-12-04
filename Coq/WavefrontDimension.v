@@ -66,7 +66,7 @@ Variable e0 : LogEntry.
 (* expose_apex is sound with W_gt for *any* wavefront partition *)
 
 Corollary w_gt_expose_apex_sound : 
-  {subset needToBeMarked p g
+  {subset shouldBeMarked p g
             <= alreadyMarked p ++ expose_apex e0 p g W_gt}.
 Proof. by apply: (expose_apex_sound e0 epf w_gt_approx). Qed.
 

@@ -83,9 +83,9 @@ Qed.
    object-fields by the end of the log execution. *)
 
 Theorem expose_apex_sound : 
-  {subset needToBeMarked p g <= alreadyMarked p ++ expose_apex}.
+  {subset shouldBeMarked p g <= alreadyMarked p ++ expose_apex}.
 Proof.
-move=>x/needToBeMarkedP=>[[et]][l1][l2][E]K Z; subst x.
+move=>x/shouldBeMarkedP=>[[et]][l1][l2][E]K Z; subst x.
 rewrite mem_cat; apply/orP.
 case: (traced_objects epf E K); [left | right].
 - by apply/alreadyMarkedP; exists et, l1, l2. 
@@ -108,7 +108,7 @@ Variable (epf : executeLog g0 p = Some (ExRes g)).
 (* Indeed, this is trivially sound  *)
 
 Corollary vanilla_expose_apex_sound : 
-  {subset needToBeMarked p g
+  {subset shouldBeMarked p g
             <= alreadyMarked p ++ expose_apex e0 p g wavefront}.
 Proof. by apply: (expose_apex_sound e0 epf)=>l _. Qed.
 
