@@ -87,8 +87,6 @@ End GCLog.
 Notation "o '#' f '@' g" := (nth null (fields g o) f)
   (at level 43, left associativity).
 
-
-
 Section ExecuteLogs.
 
 (* The following function boolean condition into a certificate of type

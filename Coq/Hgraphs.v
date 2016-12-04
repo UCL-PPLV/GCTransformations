@@ -24,8 +24,8 @@ End GraphDefinitions.
 Definition graph (h : heap) := 
   valid h /\ 
   forall x, x \in dom h -> 
-    exists (fs : seq ptr),
-      h = x :-> fs \+ free x h /\
+    exists (fs : seq ptr) (d: bool),
+      h = x :-> (fs, d) \+ free x h /\
       {subset fs <= [predU pred1 null & dom h]}. 
 
 Local Notation ptr_set := (@union_map [ordType of ptr] unitSet).
@@ -34,39 +34,39 @@ Section HeapGraphs.
 Variables (h : heap) (g : graph h).
 
 Lemma contents_pfx (x : ptr) v : 
-        find x h = Some v -> idyn_tp v = seq ptr. 
+        find x h = Some v -> idyn_tp v = ((seq ptr) * bool)%type. 
 Proof. 
-move=>F; case/find_some/(proj2 g): F (F)=>xs[E] _.
+move=>F; case/find_some/(proj2 g): F (F)=>xs[d][E] _.
 by move: (proj1 g); rewrite E => V; rewrite hfindPtUn //; case=><-.
 Qed.
 
 (* the contents of node x; that is, the mark bit and edges of x *)
 
-Definition contents (x : ptr) : seq ptr := 
+Definition contents (x : ptr) : (seq ptr) * bool := 
   match find x h as f return _ = f -> _ with
     Some v => fun epf => icoerce id (idyn_val v) (contents_pfx epf)
-  | None => fun epf => [::]
+  | None => fun epf => ([::], false)
   end (erefl _).
 
-CoInductive contents_spec (x : ptr) : bool -> seq ptr -> Type := 
-| has_some (xs : seq ptr) of 
-    h = x :-> xs \+ free x h & valid h & 
-    x \in dom h & {subset xs <= [predU pred1 null & dom h]} :
-    contents_spec x true xs
-| has_none of x \notin dom h : contents_spec x false [::]. 
+CoInductive contents_spec (x : ptr) : bool -> (seq ptr) * bool -> Type := 
+| has_some (xsd : seq ptr * bool) of 
+    h = x :-> xsd \+ free x h & valid h & 
+    x \in dom h & {subset xsd.1 <= [predU pred1 null & dom h]} :
+    contents_spec x true xsd
+| has_none of x \notin dom h : contents_spec x false ([::], false). 
 
-Lemma edgeP x : contents_spec x (x \in dom h) (contents x). 
+Lemma edgeP x : contents_spec x (x \in dom h) (contents x).  
 Proof.
 case: (g) => V G; case Dx : (x \in dom h); last first.
 - case: {G} dom_find (Dx)=>// N _.
   rewrite /contents; move: (@contents_pfx x); rewrite N /= => _.
   by apply: has_none; rewrite Dx. 
 suff [Ex S] : h = x :-> (contents x) \+ free x h /\
-              {subset (contents x) <= [predU pred1 null & dom h]}. 
+              {subset (contents x).1 <= [predU pred1 null & dom h]}. 
 - by apply: has_some=>//; rewrite -Ex.
-case/G: {G} Dx=>xs'[E'] S.
-rewrite /contents; move: (@contents_pfx x).
-rewrite E' hfindPtUn -E'// =>Ex.
+case/G: {G} Dx=>xs'[d'][E'] S.
+rewrite /contents; move: (@contents_pfx x). 
+rewrite E' hfindPtUn -E'//==>Ex.
 by rewrite !ieqc /=.  
 Qed.
 
@@ -74,19 +74,25 @@ Qed.
 
 Definition edge x := 
   [pred y | [&& x \in dom h, y != null & 
-    let: xs := contents x in y \in xs]].
+    let: xs := (contents x).1 in y \in xs]].
 
-(* graph is connected from x if it has a path from x to every other node *)
-Definition connected x :=
-  forall y, y \in dom h -> exists p, path edge x p /\ last x p = y.
+(* Reachability *)
+Definition reachable x y :=
+  x \in dom h -> y \in dom h ->
+  exists p, path edge x p /\ last x p = y.
 
 End HeapGraphs.
 
-Notation fields g x := (@contents _ g x).
+Notation fields g x := (@contents _ g x).1.
 
 Lemma graphPt z h (g: graph h) : 
-  z \in dom h -> h = z :-> (fields g z) \+ free z h.
-Proof. by move=>D; case: edgeP; last by rewrite D. Qed.
+  z \in dom h -> exists (d : bool),
+      h = z :-> (fields g z, d) \+ free z h.
+Proof.
+move=>D; case: edgeP; last by rewrite D.
+move=>[xs]d->V _ _; exists d=>/=; congr (_ \+ _).
+by rewrite hfreePtUn.
+Qed.
 
 Lemma graphNoPt z h (g: graph h) : 
   z \notin dom h -> (fields g z) = [::].
@@ -168,9 +174,10 @@ Qed.
 
 Definition modify h (g: graph h) (x : ptr) (fld : nat) (new : ptr) := 
   if x \in dom h 
-  then let: fs := contents g x
-       in   if size fs <= fld then h
-            else x :-> set_nth null fs fld new \+ free x h
+  then let: fs := (contents g x).1 in
+       let: d  := (contents g x).2 in
+       if size fs <= fld then h
+       else x :-> (set_nth null fs fld new, d) \+ free x h
   else h.
 
 (* Modify preserves the graph-ness *)
@@ -194,24 +201,24 @@ Lemma modifyG h (g : graph h) x fld old new :
     ((new \in dom h) || (new == null)) &&
     ((fld < size (fields g x)) &&  
      ((old \in [predU pred1 null & dom h]) &&
-     ((nth null (contents g x) fld) == old))) ->
+     ((nth null (contents g x).1 fld) == old))) ->
   graph res.
 Proof.
 move=>Dn; rewrite /modify; case: ifP=>Dx//=; case: ifP=>_//=.
 split=>[|y].
-- move: ((proj2 g) x Dx)=>[fs][E _]; rewrite !hvalidPtUn.
+- move: ((proj2 g) x Dx)=>[fs][d][E _]; rewrite !hvalidPtUn.
   move: (proj1 g)=>V; rewrite E hfreePtUn; last by rewrite E in V.
   rewrite E in V; move/hvalidPt_cond: (V)=>->/=.
   by move/validR: V=>->; rewrite domF inE eq_refl. 
 move=> Dy; rewrite hdomPtUn inE in Dy.
 case/andP: Dy=>V'/orP; case=>[/eqP Z|Dy].
-- subst y; exists (set_nth null (fields g x) fld new).
+- subst y; exists (set_nth null (fields g x) fld new), (contents g x).2.
   rewrite hfreePtUn; last first; [| split=>//].
   + rewrite hvalidPtUn; move/hvalidPt_cond: (V')=>->/=.
     by move/validR: (V')=>->; rewrite domF inE eq_refl.   
 - move=>z G; rewrite inE /= inE/=; apply/orP.
   rewrite hdomPtUn inE V'/=.
-  move: ((proj2 g) _ Dx)=>[fs][E]G'; rewrite (edgeE E) in G.
+  move: ((proj2 g) _ Dx)=>[fs][d][E]G'; rewrite (edgeE E) in G.
   move:(G' z)=>{G'}G'; move/set_nth_elems: G.
   case; first by move=>->; left.
   + move/eqP=>Z; subst new. 
@@ -222,10 +229,10 @@ case/andP: Dy=>V'/orP; case=>[/eqP Z|Dy].
 
 have Y: y == x = false by apply/eqP =>E; rewrite domF inE E eq_refl in Dy.
 have Dy': y \in dom h by rewrite domF inE eq_sym Y in Dy.
-move/(graphPt g): (Dy')=>E.
-exists (fields g y); split.
+move/(graphPt g): (Dy')=>[d]E.
+exists (fields g y), d; split.
 
-- rewrite hfreePtUn2=>//; rewrite Y/=; rewrite joinCA; congr (_ \+ _).
+- rewrite hfreePtUn2=>//; rewrite Y/=; rewrite joinCA/=; congr (_ \+ _).
   rewrite {1}E hfreePtUn2; last by move: (proj1 g); rewrite {1} E.
   by rewrite eq_sym Y freeF eq_sym Y.
 
@@ -241,8 +248,9 @@ Lemma modifyDom h (g : graph h) x fld new :
   dom h =i dom (modify g x fld new).
 Proof.
 rewrite /modify; case: ifP=>//D; case: ifP=>//H z.
-have V: valid (x :-> set_nth null (fields g x) fld new \+ free x h).
-- move: ((proj2 g) x D)=>[fs][E _]; rewrite !hvalidPtUn.
+have V: valid (x :-> (set_nth null (fields g x) fld new, (contents g x).2) \+
+                 free x h).
+- move: ((proj2 g) x D)=>[fs][d][E _]; rewrite !hvalidPtUn.
   move: (proj1 g)=>V; rewrite E hfreePtUn; last by rewrite E in V.
   rewrite E in V; move/hvalidPt_cond: (V)=>->/=.
   by move/validR: V=>->; rewrite domF inE eq_refl. 
@@ -259,7 +267,7 @@ Qed.
 (* First, we define the "pure" allocation, without assignment *)
 Definition pre_alloc h (x : ptr) (fnum : nat) := 
    if (x != null) && (x \notin dom h) 
-   then let: fs := ncons fnum null [::] in x :-> fs \+ h
+   then let: fs := ncons fnum null [::] in x :-> (fs, false) \+ h
    else h.
 
 (* Now we prove that the pre-allocation of a fresh pointer preserves *)
@@ -271,10 +279,10 @@ case/andP: X=> N Ni; rewrite /pre_alloc; split=>[|y D].
 - by rewrite hvalidPtUn N Ni/=; case: g=>->. 
 case:g=>V /(_ y) H; rewrite hdomPtUn inE in D.
 case/andP: D=>V' /orP; case=>[/eqP Z|D].
-- subst y; exists (ncons fnum null [::]); split.
+- subst y; exists (ncons fnum null [::]), false; split.
   + by rewrite (@hfreePtUn _ _ _ _ V').
   by move=>z /ncons_elem->.
-move/H: (D)=>[fs]{H}[E H]; exists fs; split; last first.
+move/H: (D)=>[fs][d]{H}[E H]; exists fs, d; split; last first.
 - move=>z /(H z); rewrite !inE/= !inE hdomPtUn !inE V'/=.
   by case/orP=>->//=; apply/or3P; constructor 3.
 rewrite freeUnL; last first.
@@ -329,7 +337,7 @@ Lemma allocG h (g: graph h) y fnum x fld old new :
   (x \in dom h) && (new == y) &&
   ((fld < size (fields g x)) &&  
    ((old \in [predU pred1 null & dom h]) &&
-   ((nth null (contents g x) fld) == old))) ->
+   ((nth null (contents g x).1 fld) == old))) ->
   graph res.
 Proof.
 move=>pf.
@@ -338,7 +346,7 @@ suff X: (x \in dom (pre_alloc h y fnum)) &&
         ((y \in dom (pre_alloc h y fnum)) || (y == null)) &&
         ((fld < size (fields (pre_allocG g y fnum) x)) &&  
          ((old \in [predU pred1 null & dom (pre_alloc h y fnum)]) &&
-         ((nth null (contents (pre_allocG g y fnum) x) fld) == old)))
+         ((nth null (contents (pre_allocG g y fnum) x).1 fld) == old)))
   by apply: (modifyG X).
 have X: x != y.
 - case B: (x == y)=>//; move/eqP:B=>B; subst y;
@@ -403,36 +411,42 @@ move: g K; rewrite /modify H1; case: ifP=>H3 g K.
   case: ifP=>///andP[/eqP E1/eqP E2]; subst s' f'.
   by rewrite (nth_default _ H3) H3.
 
-move: g; set h := s' :-> set_nth null (fields g1 s') f' n \+ free s' h1=>g.
-have E1: h = s' :-> set_nth null (fields g1 s') f' n \+ free s' h1 by [].
+move: g.
+set h := s' :-> (set_nth null (fields g1 s') f' n, (contents g1 s').2)
+            \+ free s' h1=>g.
+have E1: h = s' :-> (set_nth null (fields g1 s') f' n, (contents g1 s').2)
+                \+ free s' h1 by [].
 move:(@edgeE h g (free s' h1) _ _ E1)=> E2; case: ifP.
 - case/andP=>/eqP Z1/eqP Z2; subst s' f'; rewrite H3 E2.
   by rewrite nth_set_nth/= eqxx.
 move/negbT; rewrite negb_and=>/orP H4; apply/sym; case: edgeP; last first.
-- case: edgeP=>//xs' E3 V D1 _ D2.
+- case: edgeP=>//[[xs' d']] E3 V D1 _ D2.
   rewrite E1 in D1. move: (K s); rewrite  D1. 
   by move/negbTE: D2=>->.
-move=>xs E3 V D G.
+move=>[xs d] E3 V D G.
 case: edgeP=>//; last first.
 - by move: (K s); rewrite D=>G'; move/negbTE; rewrite -G'.
-move=>xs' E4 V' D' _.
+move=>[xs' d'] E4 V' D' _.
 case X: (s == s'); last first. 
 
-- rewrite hfreePtUn2 // ?X in E4; rewrite {1}E1 in E4. rewrite {2}E3 in E4.
+- rewrite hfreePtUn2 // ?X in E4; rewrite {1}E1/= in E4.
+  rewrite {3}E3 in E4.
   rewrite hfreePtUn2 ?(eq_sym s') ?X in E4; last by rewrite E3 in V. 
   rewrite joinA -[_ \+ s:->_]joinC -!joinA in E4.
-  suff V1: valid (s :-> xs \+
-           (s' :-> set_nth null (fields g1 s') f' n \+ free s' (free s h1)))
-     by case: (hcancelV V1 E4)=>->.
-  rewrite E1 {2}E3 hfreePtUn2 ?(eq_sym s') ?X in V'; last by rewrite E3 in V.
+  suff V1: valid (s :-> (xs, d) \+
+                    (s' :-> (set_nth null (fields g1 s') f' n,
+                             (contents g1 s').2) \+ free s' (free s h1))).
+    by case: (hcancelV V1 E4)=>->.
+  rewrite E1 {3}E3 hfreePtUn2 ?(eq_sym s') ?X in V'; last by rewrite E3 in V.
   by rewrite joinA -[_ \+ s:->_]joinC -!joinA in V'.
 
 move/eqP:(X)=>Z; subst s'.
-rewrite {2}E3 hfreePtUn -?E3 // in E1.
-rewrite E4 in V' E1; case: (hcancelV V' E1)=>Z _ _; subst xs'; clear E1.
+rewrite {3}E3 hfreePtUn -?E3 // in E1.
+rewrite E4 in V' E1; case: (hcancelV V' E1)=>[][]Z1 Z2 _ _.
+subst xs' d'; clear E1.
 have D2: s \in dom h1 by rewrite E3 hdomPtUn inE/=-E3 V eqxx.
-move: (graphPt g1 D2)=>E5; rewrite {1}E3 in E5; rewrite E3 in V.
-case: (hcancelV V E5)=>Z _ _; subst xs.
+move: (graphPt g1 D2)=>[d']E5; rewrite {1}E3 in E5; rewrite E3 in V.
+case: (hcancelV V E5)=>[][]Z1 Z2 _ _; subst xs d'.
 have H5: f != f' by case: H4=>//; move/negbTE; rewrite X.
 by move/negbTE: H5=>H5; rewrite nth_set_nth/= H5. 
 Qed.
@@ -447,8 +461,10 @@ move=>C; move: (modifyDom g1 s f n)=>K.
 case/andP: C=>/andP [H1 H2] _.
 move: g K; rewrite /modify H1; case: ifP=>H3 g K.
 - by move: (proof_irrelevance _ g g1)=>Z; subst g1.
-move: g; set h := s :-> set_nth null (fields g1 s) f n \+ free s h1=>g.
-have E1: h = s :-> set_nth null (fields g1 s) f n \+ free s h1 by [].
+move: g; set h := s :-> (set_nth null (fields g1 s) f n,
+                           (contents g1 s).2) \+ free s h1=>g.
+have E1: h = s :-> (set_nth null (fields g1 s) f n, (contents g1 s).2)
+               \+ free s h1 by [].
 case A: (s == o').
 - move/eqP:A=>A; subst o'.
   move:(@edgeE h g (free s h1) _ _ E1)=>->; apply/sym.
@@ -459,15 +475,15 @@ case A: (s == o').
   by rewrite !ltnNge in H3 *; rewrite leq_eqVlt eq_sym X/= H3.
 
 case B: (o' \in dom h1).
-- move: (graphPt g1 B)=>G1. 
+- move: (graphPt g1 B)=>[d]G1. 
   rewrite (K o') in B.
-  move/(graphPt g): (B); rewrite /h.
+  move/(graphPt g): (B)=>[d']; rewrite /h.
   rewrite hfreePtUn2 -?E1 ?(proj1 g)// eq_sym A joinA [o':-> _ \+_]joinC -joinA=>E.
   move: (proj1 g)=>V; rewrite E1 in V.
-  rewrite !{2}G1 hfreePtUn2 -?G1 ?(proj1 g1)//A in V. 
-  rewrite !{2}G1 hfreePtUn2 -?G1 ?(proj1 g1)//A in E.
+  rewrite !{3}G1 hfreePtUn2 -?G1 ?(proj1 g1)//A in V. 
+  rewrite !{3}G1 hfreePtUn2 -?G1 ?(proj1 g1)//A in E.
   rewrite !joinA ![s :->_\+_]joinC -!joinA in V E. 
-  by case: (hcancelV V E)=>->.
+  by case: (hcancelV V E)=>[][]->.
 
 move/negbT: B=>D; rewrite (graphNoPt g1 D).
 rewrite (K o') -/h in D.
@@ -486,12 +502,12 @@ move: (pre_allocDom g fnum A) => K; rewrite /pre_alloc A in K .
 case B: (s == n).
 - move/eqP: B=>Z; subst s.
   case/andP:A=>A1 A2; move: (graphNoPt g A2)=>->.
-  rewrite (edgeE (erefl (n :-> ncons fnum null [::] \+ h))).
+  rewrite (edgeE (erefl (n :-> (ncons fnum null [::], false) \+ h))).
   by rewrite nth_ncons; case: ifP=>_; rewrite !nth_nil.
 case D: (s \in dom h); last first.
 - move/negbT: D=>D.
   rewrite (graphNoPt g D) nth_nil.
-  have X: s \notin dom (n :-> ncons fnum null [::] \+ h)
+  have X: s \notin dom (n :-> (ncons fnum null [::], false) \+ h)
     by rewrite -!keys_dom -K inE B keys_dom; move/negbTE: D=>->.
   by rewrite (graphNoPt g1 X) nth_nil.
 apply/sym; case: edgeP; last by move/negbTE; rewrite D.
